@@ -7,6 +7,7 @@ import { X, Mail, Lock, User, Phone, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { signUp, signIn } from "@/lib/auth"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -64,15 +65,29 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", o
 
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      let result
+      
+      if (mode === "signup") {
+        result = await signUp(formData.email, formData.password, formData.name, formData.phone)
+      } else {
+        result = await signIn(formData.email, formData.password)
+      }
 
-    setIsLoading(false)
-    onSuccess({
-      name: formData.name || formData.email.split("@")[0],
-      email: formData.email,
-      phone: formData.phone || "+250 78 XXX XXXX",
-    })
+      if (result.success) {
+        onSuccess({
+          name: mode === "signup" ? formData.name : result.userData?.name || formData.email.split("@")[0],
+          email: formData.email,
+          phone: mode === "signup" ? formData.phone : result.userData?.phone || "+250 78 XXX XXXX",
+        })
+      } else {
+        setErrors({ general: result.error || "Authentication failed" })
+      }
+    } catch (error) {
+      setErrors({ general: "An unexpected error occurred" })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -185,6 +200,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", o
             </div>
             {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
           </div>
+
+          {errors.general && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm text-destructive">{errors.general}</p>
+            </div>
+          )}
 
           {mode === "login" && (
             <div className="flex justify-end">
