@@ -18,11 +18,21 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
   const [date, setDate] = useState("")
   const [passengers, setPassengers] = useState(1)
 
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0]
+
   const handleSearch = () => {
     if (!isLoggedIn) {
       onAuthRequired()
       return
     }
+    
+    // Validate date is not in the past
+    if (date && date < today) {
+      alert("Please select a date from today onwards")
+      return
+    }
+    
     onSearch(from, to, date, passengers)
   }
 
@@ -92,6 +102,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
                 <Input
                   id="date"
                   type="date"
+                  min={today}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   className="bg-secondary border-border h-12"

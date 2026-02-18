@@ -12,6 +12,7 @@ import { Footer } from "@/components/Footer"
 import { AuthModal } from "@/components/auth-modal"
 import { MyTicketsModal } from "@/components/my-tickets-modal"
 import { ProfileModal } from "@/components/profile-modal"
+import { PasswordRecovery } from "@/components/password-recovery"
 
 interface Bus {
   id: string
@@ -126,6 +127,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
 
   const handleSearch = (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })
@@ -314,6 +316,16 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           setShowAuthModal(false)
         }}
         initialMode={authMode}
+        onForgotPassword={() => {
+          setShowAuthModal(false)
+          setShowPasswordRecovery(true)
+        }}
+      />
+
+      {/* Password Recovery */}
+      <PasswordRecovery
+        isOpen={showPasswordRecovery}
+        onClose={() => setShowPasswordRecovery(false)}
       />
 
       {/* My Tickets Modal */}

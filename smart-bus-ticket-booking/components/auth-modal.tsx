@@ -13,9 +13,10 @@ interface AuthModalProps {
   onClose: () => void
   onSuccess: (user: { name: string; email: string; phone: string }) => void
   initialMode?: "login" | "signup"
+  onForgotPassword?: () => void
 }
 
-export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", onForgotPassword }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "signup">(initialMode)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -187,7 +188,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login" }:
 
           {mode === "login" && (
             <div className="flex justify-end">
-              <button type="button" className="text-sm text-primary hover:underline">
+              <button 
+                type="button" 
+                onClick={onForgotPassword}
+                className="text-sm text-primary hover:underline"
+              >
                 Forgot password?
               </button>
             </div>
