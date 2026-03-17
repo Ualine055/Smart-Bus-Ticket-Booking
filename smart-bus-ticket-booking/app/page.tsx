@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
+import { useAuth } from "@/contexts/AuthContext"
+import { logOut } from "@/lib/auth"
 import { HeroSection } from "@/components/hero-section"
 import { BusResults } from "@/components/bus-results"
 import { SeatSelection } from "@/components/seat-selection"
@@ -122,12 +124,21 @@ export default function Home() {
     date: "",
     passengers: 1,
   })
+  const { user: firebaseUser, userData } = useAuth()
   const [user, setUser] = useState<User | null>(null)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
+
+  useEffect(() => {
+    if (firebaseUser && userData) {
+      setUser({ name: userData.name, email: userData.email, phone: userData.phone })
+    } else {
+      setUser(null)
+    }
+  }, [firebaseUser, userData])
 
   const handleSearch = (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })
@@ -252,7 +263,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           setAuthMode("signup")
           setShowAuthModal(true)
         }}
-        onLogout={() => setUser(null)}
+        onLogout={async () => { await logOut(); setUser(null) }}
         onProfileClick={() => setShowProfileModal(true)}
         onMyTicketsClick={() => setShowMyTicketsModal(true)}
       />
