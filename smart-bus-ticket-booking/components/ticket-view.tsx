@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Download, Share2, MapPin, Clock, Calendar, User, QrCode } from "lucide-react"
+import { X, Download, Share2, MapPin, Clock, Calendar, User, QrCode, Bus, ArrowRight } from "lucide-react"
 
 interface TicketViewProps {
   bus: {
@@ -54,7 +54,7 @@ export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookin
         <div className="flex items-center justify-between p-6 border-b border-border bg-primary/5">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <X className="h-6 w-6 text-primary-foreground" />
+              <Bus className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
               <h2 className="text-xl font-bold">TRAVELO</h2>
@@ -89,7 +89,7 @@ export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookin
               <div className="flex items-center gap-2 w-full">
                 <div className="h-3 w-3 rounded-full border-2 border-primary" />
                 <div className="flex-1 h-0.5 bg-border relative">
-                  <X className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-primary bg-card" />
+                  <ArrowRight className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-primary bg-card" />
                 </div>
                 <div className="h-3 w-3 rounded-full bg-primary" />
               </div>
@@ -126,7 +126,7 @@ export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookin
             </div>
             <div className="bg-secondary/50 rounded-xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <X className="h-4 w-4" />
+                <Bus className="h-4 w-4" />
                 Bus Company
               </div>
               <div className="font-medium">{bus.company}</div>

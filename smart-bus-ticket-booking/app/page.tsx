@@ -206,7 +206,7 @@ export default function Home() {
     if (!selectedBus) return
     
     const ticketData = `
-TRAVELO - Digital Bus Ticket
+BUS CONNECT - Digital Bus Ticket
 =============================
 Ticket ID: ${generateTicketId()}
 Passenger: ${user?.name || "Guest User"}
@@ -235,7 +235,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
     if (!selectedBus) return
     
     const shareData = {
-      title: "TRAVELO Bus Ticket",
+      title: "Bus Connect Ticket",
       text: `My bus ticket: ${selectedBus.from} → ${selectedBus.to} on ${formatDate(searchParams.date)} at ${selectedBus.departureTime}. Seats: ${selectedSeats.join(", ")}`,
     }
 

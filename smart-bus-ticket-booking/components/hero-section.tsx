@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Calendar, ArrowRight, Search, Users } from "lucide-react"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 interface HeroSectionProps {
   onSearch: (from: string, to: string, date: string, passengers: number) => void
@@ -17,6 +18,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
   const [to, setTo] = useState("")
   const [date, setDate] = useState("")
   const [passengers, setPassengers] = useState(1)
+  const { t } = useLanguage()
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0]
@@ -51,14 +53,14 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            Rwanda's Digital Transport Solution
+            {t.badge}
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-balance">
-            Book your bus ticket{" "}
-            <span className="text-primary">anytime, anywhere</span>
+            {t.heroTitle1}{" "}
+            <span className="text-primary">{t.heroTitle2}</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Skip the queues. Search buses, select your seat, pay online, and receive digital tickets with QR codes instantly.
+            {t.heroSubtitle}
           </p>
         </div>
 
@@ -69,7 +71,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               <div className="space-y-2">
                 <Label htmlFor="from" className="text-sm font-medium flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-primary" />
-                  From
+                  {t.from}
                 </Label>
                 <Input
                   id="from"
@@ -83,7 +85,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               <div className="space-y-2">
                 <Label htmlFor="to" className="text-sm font-medium flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-primary" />
-                  To
+                  {t.to}
                 </Label>
                 <Input
                   id="to"
@@ -97,7 +99,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               <div className="space-y-2">
                 <Label htmlFor="date" className="text-sm font-medium flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
-                  Date
+                  {t.date}
                 </Label>
                 <Input
                   id="date"
@@ -112,7 +114,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               <div className="space-y-2">
                 <Label htmlFor="passengers" className="text-sm font-medium flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  Passengers
+                  {t.passengers}
                 </Label>
                 <Input
                   id="passengers"
@@ -132,7 +134,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
               className="w-full mt-6 h-14 text-base font-semibold gap-2"
             >
               <Search className="h-5 w-5" />
-              Find Available Buses
+              {t.findBusesBtn}
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -142,10 +144,10 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
         <div className="max-w-4xl mx-auto mt-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { value: "50K+", label: "Happy Passengers" },
-              { value: "100+", label: "Routes Available" },
-              { value: "24/7", label: "Customer Support" },
-              { value: "98%", label: "On-time Arrivals" },
+              { value: "50K+", label: t.happyPassengers },
+              { value: "100+", label: t.routesAvailable },
+              { value: "24/7", label: t.support },
+              { value: "98%", label: t.onTime },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>

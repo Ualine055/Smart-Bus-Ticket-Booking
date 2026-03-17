@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 import Link from "next/link"
-import { Bus, Menu, X, User, Ticket, LogOut } from "lucide-react"
+import { Bus, Menu, X, User, Ticket, LogOut, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 interface HeaderProps {
   user?: { name: string; email: string } | null
@@ -25,6 +26,9 @@ interface HeaderProps {
 
 export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLogout, onMyTicketsClick, onProfileClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { language, setLanguage, t } = useLanguage()
+
+  const languages = ["English", "Kinyarwanda", "French"] as const
   
   const scrollToSearch = () => {
     const searchSection = document.getElementById("search-section")
@@ -41,26 +45,41 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Bus className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold tracking-tight">TRAVELO</span>
+          <span className="text-xl font-bold tracking-tight">BUS CONNECT</span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Home
+            {t.home}
           </Link>
           <Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Find Buses
+            {t.findBuses}
           </Link>
           <Link href="/my-tickets" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            My Tickets
+            {t.myTickets}
           </Link>
           <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            Help
+            {t.help}
           </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Globe className="h-4 w-4" />
+                {language}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {languages.map((lang) => (
+                <DropdownMenuItem key={lang} onClick={() => setLanguage(lang)} className={language === lang ? "font-semibold text-primary" : ""}>
+                  {lang}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -79,28 +98,28 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onMyTicketsClick}>
                   <Ticket className="h-4 w-4 mr-2" />
-                  My Tickets
+                  {t.myTickets}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onProfileClick}>
                   <User className="h-4 w-4 mr-2" />
-                  Profile
+                  {t.profile}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Logout
+                  {t.logout}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button variant="ghost" size="sm" className="gap-2" onClick={onLoginClick}>
               <User className="h-4 w-4" />
-              Login
+              {t.login}
             </Button>
           )}
           <Button size="sm" className="gap-2" onClick={scrollToSearch}>
             <Ticket className="h-4 w-4" />
-            Book Now
+            {t.bookNow}
           </Button>
         </div>
 
@@ -120,18 +139,33 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
         <div className="md:hidden border-t border-border bg-background">
           <nav className="flex flex-col p-4 gap-4">
             <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Home
+              {t.home}
             </Link>
             <Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Find Buses
+              {t.findBuses}
             </Link>
             <Link href="/my-tickets" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              My Tickets
+              {t.myTickets}
             </Link>
             <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Help
+              {t.help}
             </Link>
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="justify-start gap-2">
+                    <Globe className="h-4 w-4" />
+                    {language}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {languages.map((lang) => (
+                    <DropdownMenuItem key={lang} onClick={() => setLanguage(lang)} className={language === lang ? "font-semibold text-primary" : ""}>
+                      {lang}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {user ? (
                 <>
                   <div className="flex items-center gap-3 px-2 py-2">
@@ -145,18 +179,18 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
                   </div>
                   <Button variant="ghost" className="justify-start gap-2" onClick={onLogout}>
                     <LogOut className="h-4 w-4" />
-                    Logout
+                    {t.logout}
                   </Button>
                 </>
               ) : (
                 <Button variant="ghost" className="justify-start gap-2" onClick={() => { onLoginClick?.(); setMobileMenuOpen(false); }}>
                   <User className="h-4 w-4" />
-                  Login
+                  {t.login}
                 </Button>
               )}
               <Button className="justify-start gap-2" onClick={() => { scrollToSearch(); setMobileMenuOpen(false); }}>
                 <Ticket className="h-4 w-4" />
-                Book Now
+                {t.bookNow}
               </Button>
             </div>
           </nav>
