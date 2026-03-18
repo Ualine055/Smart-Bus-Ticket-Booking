@@ -25,6 +25,28 @@
   --radius: 0.75rem;
 }
 
+.dark {
+  --background: oklch(0.13 0.02 255);
+  --foreground: oklch(0.95 0.01 75);
+  --card: oklch(0.17 0.02 255);
+  --card-foreground: oklch(0.95 0.01 75);
+  --popover: oklch(0.17 0.02 255);
+  --popover-foreground: oklch(0.95 0.01 75);
+  --primary: oklch(0.6 0.2 255);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0.02 255);
+  --secondary-foreground: oklch(0.95 0.01 75);
+  --muted: oklch(0.22 0.02 255);
+  --muted-foreground: oklch(0.65 0.02 75);
+  --accent: oklch(0.6 0.2 255);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.28 0.02 255);
+  --input: oklch(0.22 0.02 255);
+  --ring: oklch(0.6 0.2 255);
+}
+
 @theme inline {
   --font-sans: 'Geist', 'Geist Fallback';
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';

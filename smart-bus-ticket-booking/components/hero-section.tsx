@@ -144,7 +144,7 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
         <div className="max-w-4xl mx-auto mt-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { value: "50K+", label: t.happyPassengers },
+              { value: "500K+", label: t.happyPassengers },
               { value: "100+", label: t.routesAvailable },
               { value: "24/7", label: t.support },
               { value: "98%", label: t.onTime },

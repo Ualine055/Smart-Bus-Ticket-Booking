@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-
 import Link from "next/link"
-import { Bus, Menu, X, User, Ticket, LogOut, Globe } from "lucide-react"
+import { Bus, Menu, X, User, Ticket, LogOut, Globe, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useLanguage } from "@/contexts/LanguageContext"
+import { useTheme } from "@/contexts/ThemeContext"
 
 interface HeaderProps {
   user?: { name: string; email: string } | null
@@ -22,11 +22,14 @@ interface HeaderProps {
   onLogout?: () => void
   onMyTicketsClick?: () => void
   onProfileClick?: () => void
+  onFindBusesClick?: () => void
+  onHelpClick?: () => void
 }
 
-export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLogout, onMyTicketsClick, onProfileClick }: HeaderProps) {
+export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLogout, onMyTicketsClick, onProfileClick, onFindBusesClick, onHelpClick }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { language, setLanguage, t } = useLanguage()
+  const { theme, toggleTheme } = useTheme()
 
   const languages = ["English", "Kinyarwanda", "French"] as const
   
@@ -50,18 +53,18 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={scrollToSearch} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             {t.home}
-          </Link>
-          <Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          </button>
+          <button onClick={onFindBusesClick} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             {t.findBuses}
-          </Link>
-          <Link href="/my-tickets" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          </button>
+          <button onClick={onMyTicketsClick} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             {t.myTickets}
-          </Link>
-          <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          </button>
+          <button onClick={onHelpClick} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             {t.help}
-          </Link>
+          </button>
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -80,6 +83,9 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -124,32 +130,36 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
         </div>
 
         {/* Mobile Menu Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="md:hidden flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="flex flex-col p-4 gap-4">
-            <Link href="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={() => { scrollToSearch(); setMobileMenuOpen(false); }} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left">
               {t.home}
-            </Link>
-            <Link href="/search" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            </button>
+            <button onClick={() => { onFindBusesClick?.(); setMobileMenuOpen(false); }} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left">
               {t.findBuses}
-            </Link>
-            <Link href="/my-tickets" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            </button>
+            <button onClick={() => { onMyTicketsClick?.(); setMobileMenuOpen(false); }} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left">
               {t.myTickets}
-            </Link>
-            <Link href="/help" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            </button>
+            <button onClick={() => { onHelpClick?.(); setMobileMenuOpen(false); }} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left">
               {t.help}
-            </Link>
+            </button>
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

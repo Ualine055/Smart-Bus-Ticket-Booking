@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { useAuth } from "@/contexts/AuthContext"
 import { logOut } from "@/lib/auth"
+import { createBooking } from "@/lib/bookings"
 import { HeroSection } from "@/components/hero-section"
 import { BusResults } from "@/components/bus-results"
 import { SeatSelection } from "@/components/seat-selection"
@@ -15,6 +16,7 @@ import { AuthModal } from "@/components/auth-modal"
 import { MyTicketsModal } from "@/components/my-tickets-modal"
 import { ProfileModal } from "@/components/profile-modal"
 import { PasswordRecovery } from "@/components/password-recovery"
+import { HelpModal } from "@/components/help-modal"
 
 interface Bus {
   id: string
@@ -131,6 +133,7 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
+  const [showHelpModal, setShowHelpModal] = useState(false)
 
   useEffect(() => {
     if (firebaseUser && userData) {
@@ -142,7 +145,6 @@ export default function Home() {
 
   const handleSearch = (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })
-    // Simulate search - in real app, this would be an API call
     const results = mockBuses.map((bus) => ({
       ...bus,
       from: from || bus.from,
@@ -150,6 +152,9 @@ export default function Home() {
     }))
     setSearchResults(results)
     setViewState("results")
+    setTimeout(() => {
+      document.getElementById("bus-results")?.scrollIntoView({ behavior: "smooth" })
+    }, 50)
   }
 
   const handleSelectBus = (bus: Bus) => {
@@ -162,7 +167,30 @@ export default function Home() {
     setViewState("payment")
   }
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
+    if (!selectedBus || !firebaseUser) return
+    const ticketId = generateTicketId()
+    await createBooking({
+      userId: firebaseUser.uid,
+      busId: selectedBus.id,
+      routeId: `${selectedBus.from}-${selectedBus.to}`,
+      ticketId,
+      passengerName: user?.name || "Guest User",
+      passengerPhone: userData?.phone || "",
+      travelDate: searchParams.date || new Date().toISOString().split("T")[0],
+      seats: selectedSeats,
+      totalPrice: selectedSeats.length * selectedBus.price,
+      paymentMethod: "mtn",
+      paymentStatus: "completed",
+      bookingStatus: "confirmed",
+      busCompany: selectedBus.company,
+      route: {
+        from: selectedBus.from,
+        to: selectedBus.to,
+        departureTime: selectedBus.departureTime,
+        arrivalTime: selectedBus.arrivalTime,
+      },
+    })
     setViewState("ticket")
   }
 
@@ -263,9 +291,21 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           setAuthMode("signup")
           setShowAuthModal(true)
         }}
-        onLogout={async () => { await logOut(); setUser(null) }}
+        onLogout={async () => { await logOut(); setUser(null); setShowMyTicketsModal(false) }}
         onProfileClick={() => setShowProfileModal(true)}
-        onMyTicketsClick={() => setShowMyTicketsModal(true)}
+        onMyTicketsClick={() => {
+          if (!user) {
+            setAuthMode("login")
+            setShowAuthModal(true)
+          } else {
+            setShowMyTicketsModal(true)
+          }
+        }}
+        onFindBusesClick={() => {
+          const el = document.getElementById("search-section")
+          el?.scrollIntoView({ behavior: "smooth" })
+        }}
+        onHelpClick={() => setShowHelpModal(true)}
       />
 
       <main>
@@ -341,6 +381,9 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
 
       {/* My Tickets Modal */}
       {showMyTicketsModal && <MyTicketsModal onClose={() => setShowMyTicketsModal(false)} />}
+
+      {/* Help Modal */}
+      {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} />}
 
       {/* Profile Modal */}
       {showProfileModal && user && (
