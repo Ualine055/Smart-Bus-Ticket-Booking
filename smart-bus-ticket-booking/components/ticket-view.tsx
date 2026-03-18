@@ -28,24 +28,29 @@ interface TicketViewProps {
   onShare?: () => void
 }
 
+const QR_PATTERN = Array.from({ length: 64 }, (_, i) => {
+  const x = i % 8
+  const y = Math.floor(i / 8)
+  return (x < 3 && y < 3) || (x > 4 && y < 3) || (x < 3 && y > 4) ||
+    (x === 4 || y === 4) || (x + y) % 3 === 0
+})
+
+// Generate a simple QR code pattern (visual representation)
+const QRCodePattern = () => (
+  <div className="h-32 w-32 bg-white p-2 rounded-lg">
+    <div className="h-full w-full grid grid-cols-8 gap-0.5">
+      {QR_PATTERN.map((filled, i) => (
+        <div
+          key={i}
+          className={`aspect-square ${filled ? "bg-black" : "bg-white"}`}
+        />
+      ))}
+    </div>
+  </div>
+)
+
 export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookingDate, onClose, onDownload, onShare }: TicketViewProps) {
   const totalPrice = selectedSeats.length * bus.price
-
-  // Generate a simple QR code pattern (visual representation)
-  const QRCodePattern = () => (
-    <div className="h-32 w-32 bg-white p-2 rounded-lg">
-      <div className="h-full w-full grid grid-cols-8 gap-0.5">
-        {Array.from({ length: 64 }).map((_, i) => (
-          <div
-            key={i}
-            className={`aspect-square ${
-              Math.random() > 0.5 ? "bg-black" : "bg-white"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  )
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">

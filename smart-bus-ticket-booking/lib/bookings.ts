@@ -33,8 +33,8 @@ export const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt
       createdAt: new Date(),
     })
     return { success: true, bookingId: docRef.id }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -50,8 +50,8 @@ export const getUserBookings = async (userId: string) => {
     })
     
     return { success: true, bookings }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -69,8 +69,8 @@ export const getBookingByTicketId = async (ticketId: string) => {
     const booking = { id: doc.id, ...doc.data() } as Booking
     
     return { success: true, booking }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -81,8 +81,8 @@ export const updateBookingStatus = async (bookingId: string, status: Booking['bo
       bookingStatus: status,
     })
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -93,7 +93,7 @@ export const updatePaymentStatus = async (bookingId: string, status: Booking['pa
       paymentStatus: status,
     })
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }

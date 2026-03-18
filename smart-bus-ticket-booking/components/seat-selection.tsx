@@ -210,7 +210,7 @@ export function SeatSelection({ bus, onClose, onConfirm }: SeatSelectionProps) {
               <div className="flex items-center gap-2 mt-1">
                 {selectedSeats.length > 0 ? (
                   selectedSeats.map((seat) => (
-                    <Badge key={seat.id} variant="secondary">
+                    <Badge key={seat.id} className="bg-secondary text-secondary-foreground border-border">
                       {seat.id}
                     </Badge>
                   ))

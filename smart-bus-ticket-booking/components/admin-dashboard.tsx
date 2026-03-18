@@ -309,12 +309,12 @@ export function AdminDashboard() {
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
                   <CheckCircle className="h-4 w-4 text-primary" />
-                  <span>New company "Express Rwanda" registered</span>
+                  <span>New company &quot;Express Rwanda&quot; registered</span>
                   <span className="ml-auto text-muted-foreground">2 hours ago</span>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">
                   <MapPin className="h-4 w-4 text-primary" />
-                  <span>Route "Kigali → Musanze" updated</span>
+                  <span>Route &quot;Kigali → Musanze&quot; updated</span>
                   <span className="ml-auto text-muted-foreground">5 hours ago</span>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg">

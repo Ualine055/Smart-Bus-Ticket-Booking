@@ -62,7 +62,7 @@ export function BusResults({ buses, onSelectBus }: BusResultsProps) {
                     </div>
                     <div>
                       <h3 className="font-semibold">{bus.company}</h3>
-                      <Badge variant="secondary" className="text-xs mt-1">
+                      <Badge className="text-xs mt-1 border-border bg-secondary text-secondary-foreground">
                         {bus.busType}
                       </Badge>
                     </div>
@@ -127,7 +127,7 @@ export function BusResults({ buses, onSelectBus }: BusResultsProps) {
                   </div>
                   <Button
                     onClick={() => onSelectBus(bus)}
-                    className="min-w-[140px]"
+                    className="min-w-35"
                     disabled={bus.availableSeats === 0}
                   >
                     Select Seats

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Header } from "@/components/header"
 import { useAuth } from "@/contexts/AuthContext"
 import { logOut } from "@/lib/auth"
@@ -109,12 +109,6 @@ const mockBuses: Bus[] = [
 
 type ViewState = "search" | "results" | "seats" | "payment" | "ticket"
 
-interface User {
-  name: string
-  email: string
-  phone: string
-}
-
 export default function Home() {
   const [viewState, setViewState] = useState<ViewState>("search")
   const [searchResults, setSearchResults] = useState<Bus[]>([])
@@ -127,21 +121,17 @@ export default function Home() {
     passengers: 1,
   })
   const { user: firebaseUser, userData } = useAuth()
-  const [user, setUser] = useState<User | null>(null)
+  const user = useMemo(() =>
+    firebaseUser && userData
+      ? { name: userData.name, email: userData.email, phone: userData.phone }
+      : null
+  , [firebaseUser, userData])
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
-
-  useEffect(() => {
-    if (firebaseUser && userData) {
-      setUser({ name: userData.name, email: userData.email, phone: userData.phone })
-    } else {
-      setUser(null)
-    }
-  }, [firebaseUser, userData])
 
   const handleSearch = (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })
@@ -270,7 +260,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
     if (navigator.share) {
       try {
         await navigator.share(shareData)
-      } catch (err) {
+      } catch {
         console.log("Share cancelled")
       }
     } else {
@@ -291,7 +281,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           setAuthMode("signup")
           setShowAuthModal(true)
         }}
-        onLogout={async () => { await logOut(); setUser(null); setShowMyTicketsModal(false) }}
+        onLogout={async () => { await logOut(); setShowMyTicketsModal(false) }}
         onProfileClick={() => setShowProfileModal(true)}
         onMyTicketsClick={() => {
           if (!user) {
@@ -362,8 +352,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={(userData) => {
-          setUser(userData)
+        onSuccess={() => {
           setShowAuthModal(false)
         }}
         initialMode={authMode}
