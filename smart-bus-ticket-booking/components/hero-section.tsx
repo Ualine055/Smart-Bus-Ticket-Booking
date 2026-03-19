@@ -9,11 +9,9 @@ import { useLanguage } from "@/contexts/LanguageContext"
 
 interface HeroSectionProps {
   onSearch: (from: string, to: string, date: string, passengers: number) => void
-  isLoggedIn: boolean
-  onAuthRequired: () => void
 }
 
-export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectionProps) {
+export function HeroSection({ onSearch }: HeroSectionProps) {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [date, setDate] = useState("")
@@ -24,17 +22,10 @@ export function HeroSection({ onSearch, isLoggedIn, onAuthRequired }: HeroSectio
   const today = new Date().toISOString().split('T')[0]
 
   const handleSearch = () => {
-    if (!isLoggedIn) {
-      onAuthRequired()
-      return
-    }
-    
-    // Validate date is not in the past
     if (date && date < today) {
       alert("Please select a date from today onwards")
       return
     }
-    
     onSearch(from, to, date, passengers)
   }
 

@@ -153,6 +153,11 @@ export default function Home() {
   }
 
   const handleSeatConfirm = (seats: string[]) => {
+    if (!user) {
+      setAuthMode("login")
+      setShowAuthModal(true)
+      return
+    }
     setSelectedSeats(seats)
     setViewState("payment")
   }
@@ -301,11 +306,6 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
       <main>
         <HeroSection 
           onSearch={handleSearch} 
-          isLoggedIn={!!user}
-          onAuthRequired={() => {
-            setAuthMode("signup")
-            setShowAuthModal(true)
-          }}
         />
 
         {viewState !== "search" && searchResults.length > 0 && (
