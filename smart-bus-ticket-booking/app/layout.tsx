@@ -10,7 +10,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'TRAVELO - Online Bus Ticket Booking',
+  title: 'BUS CONNECT - Online Bus Ticket Booking',
   description: 'Book your bus ticket anytime, anywhere. Modern digital ticketing for Rwanda transport.',
   generator: 'v0.app',
   icons: {

@@ -1,4 +1,4 @@
-# TRAVELO - Implementation Status
+# BUS CONNECT - Implementation Status
 
 ## ✅ Completed Features
 
@@ -119,3 +119,45 @@ lib/
 - Payment gateway credentials
 - SMS/Email service setup
 - Deployment platform (Vercel/AWS/etc.)
+
+---
+
+## 🧾 Recent Work Log (April 2026)
+
+Use this section to remember exactly what was implemented recently and what to add next.
+
+### ✅ Completed in this session
+
+1. **Branding update**
+   - Replaced project name `TRAVELO` with `BUS CONNECT` across app UI and documentation.
+   - Updated title/labels in layout, ticket view, auth text, language strings, and project docs.
+
+2. **Role-based UI visibility (RBAC - frontend)**
+   - Hid footer **For Business** section from passengers and logged-out users.
+   - Business links now appear only for roles: `company` and `admin`.
+
+3. **Business page protection**
+   - Added reusable role guard component: `components/role-guard.tsx`.
+   - Protected pages:
+     - `/company-dashboard` -> `company` or `admin`
+     - `/pricing` -> `company` or `admin`
+     - `/api-access` -> `company` or `admin`
+
+4. **Unauthorized handling**
+   - Added page: `/unauthorized`
+   - Shows a clear message with navigation options when user role is not allowed.
+
+### ⚠️ Important behavior to remember
+
+- New users are created with role: `passenger` by default (`lib/auth.ts`).
+- To test admin/company behavior, change Firestore `users/{uid}.role` to:
+  - `admin` or
+  - `company`
+- After changing role, user should log out and log in again.
+
+### 📌 Suggested next additions (professional final-year scope)
+
+1. Add **Admin Role Manager UI** (change user roles from dashboard, not manually in Firebase Console).
+2. Add **server/middleware route protection** (stronger than client-only guard).
+3. Add **audit trail** for role changes (who changed role, when, old vs new value).
+4. Add **route management CRUD** for company users (create/edit/delete routes).

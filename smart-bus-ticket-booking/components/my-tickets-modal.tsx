@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Ticket, MapPin, Calendar, Clock, Loader2 } from "lucide-react"
+import { X, Ticket, MapPin, Calendar, Clock, Loader2, RefreshCw } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { getUserBookings, Booking } from "@/lib/bookings"
+import { RescheduleModal } from "@/components/reschedule-modal"
 
 interface MyTicketsModalProps {
   onClose: () => void
@@ -15,6 +16,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
   const { user } = useAuth()
   const [tickets, setTickets] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [reschedulingTicket, setReschedulingTicket] = useState<Booking | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -87,8 +89,21 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                         <span>Seats: {ticket.seats.join(", ")}</span>
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-primary">
-                      {ticket.totalPrice.toLocaleString()} RWF
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-semibold text-primary">
+                        {ticket.totalPrice.toLocaleString()} RWF
+                      </div>
+                      {ticket.bookingStatus === "confirmed" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 text-xs"
+                          onClick={() => setReschedulingTicket(ticket)}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Reschedule
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -101,6 +116,19 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
           <Button onClick={onClose} variant="outline" className="w-full">Close</Button>
         </div>
       </div>
+
+      {reschedulingTicket && (
+        <RescheduleModal
+          booking={reschedulingTicket}
+          onClose={() => setReschedulingTicket(null)}
+          onSuccess={(updated) => {
+            setTickets((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t))
+            )
+            setReschedulingTicket(null)
+          }}
+        />
+      )}
     </div>
   )
 }

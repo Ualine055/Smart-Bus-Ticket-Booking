@@ -1,4 +1,4 @@
-# Database Schema for TRAVELO
+# Database Schema for BUS CONNECT
 
 ## Collections/Tables Needed:
 

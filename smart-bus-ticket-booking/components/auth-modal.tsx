@@ -7,7 +7,7 @@ import { X, Mail, Lock, User, Phone, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { signUp, signIn } from "@/lib/auth"
+import { signUp, signIn, type UserData } from "@/lib/auth"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -75,10 +75,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", o
       }
 
       if (result.success) {
+        let name = formData.name
+        let phone = formData.phone
+        if (mode !== "signup" && "userData" in result && result.userData) {
+          const ud = result.userData as UserData
+          name = ud.name || formData.email.split("@")[0]
+          phone = ud.phone || "+250 78 XXX XXXX"
+        }
         onSuccess({
-          name: mode === "signup" ? formData.name : result.userData?.name || formData.email.split("@")[0],
+          name,
           email: formData.email,
-          phone: mode === "signup" ? formData.phone : result.userData?.phone || "+250 78 XXX XXXX",
+          phone,
         })
       } else {
         setErrors({ general: result.error || "Authentication failed" })
@@ -120,7 +127,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", o
           <p className="text-primary-foreground/80 mt-1 text-sm">
             {mode === "login"
               ? "Sign in to access your bookings"
-              : "Join TRAVELO for seamless travel"}
+              : "Join BUS CONNECT for seamless travel"}
           </p>
         </div>
 

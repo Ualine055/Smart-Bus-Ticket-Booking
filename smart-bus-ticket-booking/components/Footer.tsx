@@ -84,7 +84,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/api" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/api-access" className="text-muted-foreground hover:text-foreground transition-colors">
                   {t.apiAccess}
                 </Link>
               </li>

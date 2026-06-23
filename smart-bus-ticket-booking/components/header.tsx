@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bus, Menu, X, User, Ticket, LogOut, Globe, Sun, Moon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Bus, Menu, X, User, Ticket, LogOut, Globe, Sun, Moon, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,6 +17,8 @@ import { useTheme } from "@/contexts/ThemeContext"
 
 interface HeaderProps {
   user?: { name: string; email: string } | null
+  /** When set, shows dashboard entry points for company / admin accounts */
+  userRole?: "passenger" | "company" | "admin"
   onLoginClick?: () => void
   onSignupClick?: () => void
   onBookNowClick?: () => void
@@ -26,7 +29,19 @@ interface HeaderProps {
   onHelpClick?: () => void
 }
 
-export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLogout, onMyTicketsClick, onProfileClick, onFindBusesClick, onHelpClick }: HeaderProps) {
+export function Header({
+  user,
+  userRole,
+  onLoginClick,
+  onSignupClick,
+  onBookNowClick,
+  onLogout,
+  onMyTicketsClick,
+  onProfileClick,
+  onFindBusesClick,
+  onHelpClick,
+}: HeaderProps) {
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { language, setLanguage, t } = useLanguage()
   const { theme, toggleTheme } = useTheme()
@@ -110,6 +125,12 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
                   <User className="h-4 w-4 mr-2" />
                   {t.profile}
                 </DropdownMenuItem>
+                {userRole === "admin" && (
+                  <DropdownMenuItem onClick={() => router.push("/admin")}>
+                    <Shield className="h-4 w-4 mr-2" />
+                    {t.adminDashboard}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
@@ -187,6 +208,16 @@ export function Header({ user, onLoginClick, onSignupClick, onBookNowClick, onLo
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
+                  {userRole === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Shield className="h-4 w-4" />
+                      {t.adminDashboard}
+                    </Link>
+                  )}
                   <Button variant="ghost" className="justify-start gap-2" onClick={onLogout}>
                     <LogOut className="h-4 w-4" />
                     {t.logout}
