@@ -62,7 +62,7 @@ export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookin
               <Bus className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">TRAVELO</h2>
+              <h2 className="text-xl font-bold">BUS CONNECT</h2>
               <p className="text-sm text-muted-foreground">Digital Bus Ticket</p>
             </div>
           </div>
