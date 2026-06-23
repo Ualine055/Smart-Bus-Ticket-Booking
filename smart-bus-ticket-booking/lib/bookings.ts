@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, doc, updateDoc } from 'firebase/firestore'
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 
 export interface Booking {
@@ -23,6 +23,10 @@ export interface Booking {
     arrivalTime: string
   }
   createdAt: Date
+  rescheduledAt?: Date
+  rescheduleFee?: number
+  originalDepartureTime?: string
+  originalArrivalTime?: string
 }
 
 // Create new booking
@@ -79,6 +83,27 @@ export const updateBookingStatus = async (bookingId: string, status: Booking['bo
   try {
     await updateDoc(doc(db, 'bookings', bookingId), {
       bookingStatus: status,
+    })
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+// Reschedule booking to a new time slot
+export const rescheduleBooking = async (
+  bookingId: string,
+  newDepartureTime: string,
+  newArrivalTime: string,
+  rescheduleFee: number
+) => {
+  try {
+    const bookingRef = doc(db, 'bookings', bookingId)
+    await updateDoc(bookingRef, {
+      'route.departureTime': newDepartureTime,
+      'route.arrivalTime': newArrivalTime,
+      rescheduleFee,
+      rescheduledAt: Timestamp.now(),
     })
     return { success: true }
   } catch (error) {
