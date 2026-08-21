@@ -48,91 +48,151 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abc123
 
 ## Step 6: Set Up Firestore Security Rules
 
-In Firestore Database > Rules, paste:
+This is the step that actually enforces who may do what. The React app hides
+pages by role for convenience, but anyone can call the database directly using
+the project's public API key - these rules are checked on Google's servers,
+where the user cannot interfere.
+
+In **Firestore Database > Rules**, delete what is there (test mode allows the
+whole internet to read and write your data) and paste this, then **Publish**:
 
 ```javascript
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // The caller's own user document, which is where their role lives.
+    function callerRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function callerCompanyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && callerRole() == 'admin';
+    }
+
+    function isCompany() {
+      return isSignedIn() && callerRole() == 'company';
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      // Signing up creates your own document, and it must start as a
+      // passenger. This stops someone registering themselves as an admin.
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.role == 'passenger';
+
+      // You may edit only your name and phone. Because 'role' is not in this
+      // list, nobody can promote themselves to company or admin.
+      allow update: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['name', 'phone']);
+
+      // Only an admin changes roles - this is what company approval does.
+      allow update: if isAdmin();
+
+      allow delete: if false;
     }
-    
-    // Bookings collection
-    match /bookings/{bookingId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-    }
-    
-    // Routes collection (read-only for passengers)
-    match /routes/{routeId} {
-      allow read: if true;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['company', 'admin'];
-    }
-    
-    // Companies collection
+
     match /companies/{companyId} {
+      allow read: if isSignedIn();
+
+      // You apply as yourself, and it must start as pending - otherwise an
+      // applicant could submit themselves already approved.
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      // Anyone may read - passengers search for buses without signing in.
       allow read: if true;
-      allow write: if request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // An operator may only publish schedules under their own company.
+      allow create: if isCompany()
+                    && request.resource.data.companyId == callerCompanyId();
+
+      allow update, delete: if isAdmin()
+                            || (isCompany() && resource.data.companyId == callerCompanyId());
+    }
+
+    match /bookings/{ticketId} {
+      // A passenger holding the reference can open their own ticket. Reading
+      // one requires knowing the exact random id; listing is denied below.
+      allow get: if true;
+
+      // Only staff may browse or search all bookings.
+      allow list: if isCompany() || isAdmin();
+
+      // Passengers buy without an account, so this must allow unauthenticated
+      // writes - but only well-formed ones, and never onto an existing ticket.
+      allow create: if request.resource.data.keys().hasAll(
+                         ['ticketId', 'pin', 'passengerName', 'passengerPhone',
+                          'busId', 'travelDate', 'seats', 'totalPrice'])
+                    && request.resource.data.ticketId == ticketId
+                    && request.resource.data.passengerName is string
+                    && request.resource.data.passengerName.size() > 0
+                    && request.resource.data.totalPrice is number
+                    && request.resource.data.totalPrice >= 0
+                    && request.resource.data.bookingStatus == 'confirmed';
+
+      // Rescheduling by passengers, and marking boarded by staff.
+      allow update: if true;
+
+      allow delete: if isAdmin();
     }
   }
 }
 ```
 
-## Step 7: Create Initial Collections
+Two of these decisions are worth being able to explain:
 
-In Firestore, manually create these collections:
+**`allow get: if true` on bookings is intentional.** The ticket reference works
+like an airline booking reference or an unlisted share link - holding it is the
+proof of ownership. `allow list` stays restricted to staff, so nobody can
+enumerate the collection; they would have to guess a random 8-character code.
 
-### 1. `users` collection
-- Auto-created when users sign up
+**`allow update: if true` on bookings is the weak point.** Passengers reschedule
+and staff mark tickets boarded, and neither has a verifiable identity at that
+moment. Tightening it would require Cloud Functions. This is listed as a known
+limitation in `STATUS.md`.
 
-### 2. `routes` collection
-Add sample route:
-```json
-{
-  "from": "Kigali",
-  "to": "Musanze",
-  "companyId": "company1",
-  "busId": "bus1",
-  "departureTime": "06:00",
-  "arrivalTime": "08:30",
-  "duration": "2h 30m",
-  "price": 3500,
-  "totalSeats": 45,
-  "amenities": ["wifi", "ac", "charging"],
-  "busType": "Luxury Coach",
-  "status": "active"
-}
-```
+## Step 7: Create the First Administrator
 
-### 3. `companies` collection
-Add sample company:
-```json
-{
-  "name": "Volcano Express",
-  "email": "info@volcanoexpress.rw",
-  "phone": "+250 788 000 000",
-  "status": "approved",
-  "createdAt": "2024-01-01"
-}
-```
+Collections create themselves on first write, so there is nothing to set up by
+hand - except the first admin, because nothing in the application can create
+one.
 
-### 4. `bookings` collection
-- Auto-created when users book tickets
+1. Sign up in the app with your own email
+2. In **Firestore Database > Data**, open `users` and find your document
+3. Change `role` from `passenger` to `admin`
+4. Sign out and back in so the app re-reads your role
+
+Console edits bypass security rules, which is exactly why the first admin has
+to be made here.
 
 ## Step 8: Test the Setup
 
 1. Restart your dev server: `npm run dev`
-2. Try signing up a new user
-3. Check Firebase Console > Authentication (user should appear)
-4. Check Firestore > users collection (user data should be there)
+2. Sign up a new user
+3. Check **Authentication** - the user should appear
+4. Check **Firestore > users** - their document should be there with
+   `role: "passenger"`
+5. Book a ticket as a passenger (no sign-in needed) and confirm a document
+   appears in `bookings`, keyed by the ticket reference
 
 ## Step 9: Deploy (Optional)
 
@@ -150,21 +210,36 @@ Add environment variables in Vercel dashboard.
 - Check `.env.local` file exists
 - Restart dev server
 
-### Error: "Permission denied"
-- Check Firestore security rules
-- Make sure user is authenticated
+### Error: "Missing or insufficient permissions"
+- Confirm the rules from Step 6 are published, not just typed in the editor
+- Publishing takes about a minute to take effect
+- Saving a schedule fails if your account is not `company` with a `companyId`,
+  which is set when an admin approves your application
 
 ### Error: "Network error"
 - Check Firebase project is active
 - Check internet connection
 
+### Password reset emails never arrive
+- Check **Authentication > Templates > Password reset** is enabled
+- Check the spam folder
+
+### Search shows no buses
+- Search reads real schedules, so an empty database returns nothing
+- Add a schedule from the company dashboard first
+
 ## Next Steps
 
-1. ✅ Authentication working
-2. ✅ User data stored in Firestore
-3. ⏳ Connect booking flow to Firebase
-4. ⏳ Add payment integration
-5. ⏳ Add email notifications
+Not built, and each needs work beyond the browser:
+
+1. Real payment collection - needs MTN MoMo / Airtel Money merchant
+   credentials and a server-side callback to confirm settlement
+2. Email and SMS notifications - needs a provider such as SendGrid, Twilio,
+   or Africa's Talking, triggered server-side
+3. Firebase App Check - mitigates scripted fake bookings, which the rules
+   cannot prevent on their own
+
+See `STATUS.md` for the full list of limitations.
 
 ## Support
 
