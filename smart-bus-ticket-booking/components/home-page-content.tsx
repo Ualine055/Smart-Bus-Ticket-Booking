@@ -1,23 +1,22 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/Footer"
+import { useState } from "react"
+import { Loader2 } from "lucide-react"
+import { SiteShell } from "@/components/site-shell"
 import { useAuth } from "@/contexts/AuthContext"
-import { logOut } from "@/lib/auth"
-import { createBooking } from "@/lib/bookings"
+import {
+  createBooking,
+  getSeatsTakenOn,
+  generateTicketId,
+  generateTicketPin,
+} from "@/lib/bookings"
+import { searchSchedules, type Schedule } from "@/lib/schedules"
 import { HeroSection } from "@/components/hero-section"
 import { BusResults } from "@/components/bus-results"
 import { SeatSelection } from "@/components/seat-selection"
-import { PaymentModal } from "@/components/payment-modal"
+import { PaymentModal, type PassengerDetails } from "@/components/payment-modal"
 import { TicketView } from "@/components/ticket-view"
 import { FeaturesSection } from "@/components/features-section"
-import { AuthModal } from "@/components/auth-modal"
-import { MyTicketsModal } from "@/components/my-tickets-modal"
-import { ProfileModal } from "@/components/profile-modal"
-import { PasswordRecovery } from "@/components/password-recovery"
-import { HelpModal } from "@/components/help-modal"
 
 interface Bus {
   id: string
@@ -33,82 +32,6 @@ interface Bus {
   amenities: string[]
   busType: string
 }
-
-type BusOperatorSchedule = {
-  id: string
-  company: string
-  busType: string
-  price: number
-  totalSeats: number
-  amenities: string[]
-  startTime: string
-  endTime: string
-  frequencyMinutes: number
-  durationMinutes: number
-}
-
-const busOperatorSchedules: BusOperatorSchedule[] = [
-  {
-    id: "volcano",
-    company: "Volcano Express",
-    busType: "Luxury Coach",
-    price: 3500,
-    totalSeats: 45,
-    amenities: ["wifi", "ac", "charging"],
-    startTime: "06:00",
-    endTime: "20:00",
-    frequencyMinutes: 30,
-    durationMinutes: 150,
-  },
-  {
-    id: "horizon",
-    company: "Horizon Bus",
-    busType: "Standard",
-    price: 2800,
-    totalSeats: 52,
-    amenities: ["ac"],
-    startTime: "06:30",
-    endTime: "19:30",
-    frequencyMinutes: 30,
-    durationMinutes: 150,
-  },
-  {
-    id: "virunga",
-    company: "Virunga Lines",
-    busType: "VIP Express",
-    price: 4200,
-    totalSeats: 32,
-    amenities: ["wifi", "ac", "charging"],
-    startTime: "07:00",
-    endTime: "18:00",
-    frequencyMinutes: 60,
-    durationMinutes: 135,
-  },
-  {
-    id: "royal",
-    company: "Royal Express",
-    busType: "Premium",
-    price: 3000,
-    totalSeats: 45,
-    amenities: ["wifi", "ac"],
-    startTime: "08:00",
-    endTime: "18:30",
-    frequencyMinutes: 45,
-    durationMinutes: 150,
-  },
-  {
-    id: "kigali-coach",
-    company: "Kigali Coach",
-    busType: "Economy",
-    price: 2500,
-    totalSeats: 52,
-    amenities: ["ac"],
-    startTime: "06:00",
-    endTime: "21:00",
-    frequencyMinutes: 30,
-    durationMinutes: 150,
-  },
-]
 
 function toMinutes(hhmm: string) {
   const [hours, minutes] = hhmm.split(":").map(Number)
@@ -128,44 +51,39 @@ function toDurationLabel(durationMinutes: number) {
   return `${hours}h ${minutes}m`
 }
 
-function buildBusesForRoute(from: string, to: string): Bus[] {
-  const routeFrom = from || "Kigali"
-  const routeTo = to || "Musanze"
+/** Turn published schedules into the bookable buses shown in search results. */
+function toBuses(schedules: Schedule[]): Bus[] {
+  return schedules.map((schedule) => {
+    const departure = toMinutes(schedule.departureTime)
 
-  return busOperatorSchedules.flatMap((operator) => {
-    const start = toMinutes(operator.startTime)
-    const end = toMinutes(operator.endTime)
-    const buses: Bus[] = []
-    let sequence = 0
-
-    for (let departure = start; departure <= end; departure += operator.frequencyMinutes) {
-      sequence += 1
-      const availableSeats = Math.max(operator.totalSeats - ((sequence * 7) % operator.totalSeats), 1)
-
-      buses.push({
-        id: `${operator.id}-${departure}`,
-        company: operator.company,
-        departureTime: toTime(departure),
-        arrivalTime: toTime(departure + operator.durationMinutes),
-        duration: toDurationLabel(operator.durationMinutes),
-        from: routeFrom,
-        to: routeTo,
-        price: operator.price,
-        availableSeats,
-        totalSeats: operator.totalSeats,
-        amenities: operator.amenities,
-        busType: operator.busType,
-      })
+    return {
+      id: schedule.id!,
+      company: schedule.companyName,
+      departureTime: schedule.departureTime,
+      arrivalTime: toTime(departure + schedule.durationMinutes),
+      duration: toDurationLabel(schedule.durationMinutes),
+      from: schedule.from,
+      to: schedule.to,
+      price: schedule.price,
+      // Starts at full capacity; the caller subtracts seats already sold.
+      availableSeats: schedule.totalSeats,
+      totalSeats: schedule.totalSeats,
+      amenities: schedule.amenities ?? [],
+      busType: schedule.busType,
     }
-
-    return buses
   })
 }
 
 type ViewState = "search" | "results" | "seats" | "payment" | "ticket"
 
-function generateTicketId() {
-  return `TRV-${Date.now().toString(36).toUpperCase()}`
+/** Local calendar date as YYYY-MM-DD (toISOString would use UTC and roll early). */
+function todayIso() {
+  const now = new Date()
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-")
 }
 
 export type HomePageContentProps = {
@@ -173,15 +91,19 @@ export type HomePageContentProps = {
 }
 
 export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { user: firebaseUser, userData, loading: authLoading } = useAuth()
+  const { user: firebaseUser } = useAuth()
 
   const [viewState, setViewState] = useState<ViewState>("search")
   const [searchResults, setSearchResults] = useState<Bus[]>([])
+  const [searching, setSearching] = useState(false)
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
-  const [issuedTicketId, setIssuedTicketId] = useState("")
+  const [issuedTicket, setIssuedTicket] = useState<{
+    ticketId: string
+    pin: string
+    passengerName: string
+  } | null>(null)
+  const [bookingError, setBookingError] = useState("")
   const [searchParams, setSearchParams] = useState({
     from: "",
     to: "",
@@ -189,90 +111,66 @@ export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
     passengers: 1,
   })
 
-  const user = useMemo(
-    () =>
-      firebaseUser && userData
-        ? { name: userData.name, email: userData.email, phone: userData.phone }
-        : null,
-    [firebaseUser, userData],
-  )
+  /** The date being booked; falls back to today when the search left it blank. */
+  const travelDate = searchParams.date || todayIso()
 
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login")
-  const [showProfileModal, setShowProfileModal] = useState(false)
-  const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
-  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
-  const [showHelpModal, setShowHelpModal] = useState(false)
-
-  const ticketsOpenedRef = useRef(false)
-  const promptedLoginRef = useRef(false)
-
-  useEffect(() => {
-    if (!autoOpenMyTickets || authLoading) return
-
-    if (firebaseUser && userData) {
-      if (!ticketsOpenedRef.current) {
-        ticketsOpenedRef.current = true
-        setShowMyTicketsModal(true)
-      }
-      return
-    }
-
-    if (!firebaseUser && !promptedLoginRef.current) {
-      promptedLoginRef.current = true
-      setAuthMode("login")
-      setShowAuthModal(true)
-    }
-  }, [autoOpenMyTickets, authLoading, firebaseUser, userData])
-
-  const onFindBusesClick = () => {
-    if (pathname === "/" || pathname === "/search") {
-      document.getElementById("search-section")?.scrollIntoView({ behavior: "smooth" })
-    } else {
-      router.push("/search")
-    }
-  }
-
-  const handleSearch = (from: string, to: string, date: string, passengers: number) => {
+  const handleSearch = async (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })
-    const results = buildBusesForRoute(from, to)
-    setSearchResults(results)
+    setSearchResults([])
+    setSearching(true)
     setViewState("results")
+
     setTimeout(() => {
       document.getElementById("bus-results")?.scrollIntoView({ behavior: "smooth" })
     }, 50)
+
+    // Published schedules for the route, and seats already sold on that date.
+    const [published, sold] = await Promise.all([
+      searchSchedules(from, to),
+      getSeatsTakenOn(date || todayIso()),
+    ])
+
+    setSearchResults(
+      toBuses(published.schedules).map((bus) => {
+        const taken = sold.seatsByBus[bus.id]?.length ?? 0
+        return { ...bus, availableSeats: Math.max(bus.totalSeats - taken, 0) }
+      }),
+    )
+    setSearching(false)
   }
 
   const handleSelectBus = (bus: Bus) => {
     setSelectedBus(bus)
+    setBookingError("")
     setViewState("seats")
   }
 
+  // Passengers buy without an account; their details are collected at payment.
   const handleSeatConfirm = (seats: string[]) => {
-    if (!user) {
-      setAuthMode("login")
-      setShowAuthModal(true)
-      return
-    }
+    setBookingError("")
     setSelectedSeats(seats)
     setViewState("payment")
   }
 
-  const handlePaymentSuccess = async () => {
-    if (!selectedBus || !firebaseUser) return
+  const handlePaymentSuccess = async (details: PassengerDetails) => {
+    if (!selectedBus) return
+
     const ticketId = generateTicketId()
-    setIssuedTicketId(ticketId)
-    await createBooking({
-      userId: firebaseUser.uid,
+    const pin = generateTicketPin()
+
+    const result = await createBooking({
+      // Only set when an operator or admin books on someone's behalf.
+      userId: firebaseUser?.uid ?? null,
       busId: selectedBus.id,
       routeId: `${selectedBus.from}-${selectedBus.to}`,
       ticketId,
-      passengerName: user?.name || "Guest User",
-      passengerPhone: userData?.phone || "",
-      travelDate: searchParams.date || new Date().toISOString().split("T")[0],
+      pin,
+      passengerName: details.name,
+      passengerPhone: details.phone,
+      travelDate,
       seats: selectedSeats,
       totalPrice: selectedSeats.length * selectedBus.price,
-      paymentMethod: "mtn",
+      paymentMethod: details.paymentMethod,
       paymentStatus: "completed",
       bookingStatus: "confirmed",
       busCompany: selectedBus.company,
@@ -283,6 +181,16 @@ export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
         arrivalTime: selectedBus.arrivalTime,
       },
     })
+
+    // Someone else may have taken the seat while this passenger was paying.
+    if (!result.success) {
+      setBookingError(result.error ?? "Your booking could not be saved.")
+      setSelectedSeats([])
+      setViewState("seats")
+      return
+    }
+
+    setIssuedTicket({ ticketId, pin, passengerName: details.name })
     setViewState("ticket")
   }
 
@@ -296,7 +204,7 @@ export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
       setSearchResults([])
       setSelectedBus(null)
       setSelectedSeats([])
-      setIssuedTicketId("")
+      setIssuedTicket(null)
     }
   }
 
@@ -319,13 +227,19 @@ export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
   }
 
   const handleDownloadTicket = () => {
-    if (!selectedBus || !issuedTicketId) return
+    if (!selectedBus || !issuedTicket) return
 
+    // The reference and PIN are the only way back to this ticket, so they lead.
     const ticketData = `
 BUS CONNECT - Digital Bus Ticket
 =============================
-Ticket ID: ${issuedTicketId}
-Passenger: ${user?.name || "Guest User"}
+Ticket ID: ${issuedTicket.ticketId}
+PIN: ${issuedTicket.pin}
+
+Keep these safe - you need both to open
+this ticket again at /my-tickets
+
+Passenger: ${issuedTicket.passengerName}
 Date: ${formatDate(searchParams.date)}
 
 Route: ${selectedBus.from} → ${selectedBus.to}
@@ -342,17 +256,17 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `BUS CONNECT-Ticket-${issuedTicketId}.txt`
+    a.download = `BUS CONNECT-Ticket-${issuedTicket.ticketId}.txt`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const handleShareTicket = async () => {
-    if (!selectedBus || !issuedTicketId) return
+    if (!selectedBus || !issuedTicket) return
 
     const shareData = {
       title: "Bus Connect Ticket",
-      text: `Ticket ${issuedTicketId}: ${selectedBus.from} → ${selectedBus.to} on ${formatDate(searchParams.date)} at ${selectedBus.departureTime}. Seats: ${selectedSeats.join(", ")}`,
+      text: `Ticket ${issuedTicket.ticketId} (PIN ${issuedTicket.pin}): ${selectedBus.from} → ${selectedBus.to} on ${formatDate(searchParams.date)} at ${selectedBus.departureTime}. Seats: ${selectedSeats.join(", ")}`,
     }
 
     if (navigator.share) {
@@ -368,50 +282,48 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        user={user}
-        userRole={userData?.role}
-        onLoginClick={() => {
-          setAuthMode("login")
-          setShowAuthModal(true)
-        }}
-        onSignupClick={() => {
-          setAuthMode("signup")
-          setShowAuthModal(true)
-        }}
-        onLogout={async () => {
-          await logOut()
-          setShowMyTicketsModal(false)
-        }}
-        onProfileClick={() => setShowProfileModal(true)}
-        onMyTicketsClick={() => {
-          if (!user) {
-            setAuthMode("login")
-            setShowAuthModal(true)
-          } else {
-            setShowMyTicketsModal(true)
-          }
-        }}
-        onFindBusesClick={onFindBusesClick}
-        onHelpClick={() => setShowHelpModal(true)}
-      />
-
+    // SiteShell provides the header, footer, and the account/help modals shared
+    // with every other page; only the booking flow lives here.
+    <SiteShell initialOpenMyTickets={autoOpenMyTickets}>
       <main>
         <HeroSection onSearch={handleSearch} />
 
-        {viewState !== "search" && searchResults.length > 0 && (
+        {viewState !== "search" && searching && (
+          <section id="bus-results" className="py-12">
+            <div className="container mx-auto px-4 flex items-center justify-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              Searching for available buses...
+            </div>
+          </section>
+        )}
+
+        {viewState !== "search" && !searching && searchResults.length === 0 && (
+          <section id="bus-results" className="py-12">
+            <div className="container mx-auto px-4 text-center max-w-md">
+              <h2 className="text-xl font-bold mb-2">No buses on this route</h2>
+              <p className="text-muted-foreground text-sm">
+                No operator has published a departure from{" "}
+                <span className="text-foreground">{searchParams.from || "anywhere"}</span> to{" "}
+                <span className="text-foreground">{searchParams.to || "anywhere"}</span> yet. Try
+                another route, or leave both fields empty to see every available trip.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {viewState !== "search" && !searching && searchResults.length > 0 && (
           <BusResults buses={searchResults} onSelectBus={handleSelectBus} />
         )}
 
         <FeaturesSection />
       </main>
 
-      <Footer />
-
       {viewState === "seats" && selectedBus && (
         <SeatSelection
           bus={selectedBus}
+          travelDate={travelDate}
+          maxSeats={searchParams.passengers}
+          notice={bookingError}
           onClose={handleCloseModal}
           onConfirm={handleSeatConfirm}
         />
@@ -426,46 +338,19 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
         />
       )}
 
-      {viewState === "ticket" && selectedBus && issuedTicketId && (
+      {viewState === "ticket" && selectedBus && issuedTicket && (
         <TicketView
           bus={selectedBus}
           selectedSeats={selectedSeats}
-          ticketId={issuedTicketId}
-          passengerName={user?.name || "Guest User"}
+          ticketId={issuedTicket.ticketId}
+          pin={issuedTicket.pin}
+          passengerName={issuedTicket.passengerName}
           bookingDate={formatDate(searchParams.date)}
           onClose={handleCloseModal}
           onDownload={handleDownloadTicket}
           onShare={handleShareTicket}
         />
       )}
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          setShowAuthModal(false)
-        }}
-        initialMode={authMode}
-        onForgotPassword={() => {
-          setShowAuthModal(false)
-          setShowPasswordRecovery(true)
-        }}
-      />
-
-      <PasswordRecovery
-        isOpen={showPasswordRecovery}
-        onClose={() => setShowPasswordRecovery(false)}
-      />
-
-      {showMyTicketsModal && (
-        <MyTicketsModal onClose={() => setShowMyTicketsModal(false)} />
-      )}
-
-      {showHelpModal && <HelpModal onClose={() => setShowHelpModal(false)} />}
-
-      {showProfileModal && user && (
-        <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />
-      )}
-    </div>
+    </SiteShell>
   )
 }

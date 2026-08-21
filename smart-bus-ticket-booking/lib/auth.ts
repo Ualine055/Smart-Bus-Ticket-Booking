@@ -5,7 +5,7 @@ import {
   sendPasswordResetEmail,
   User
 } from 'firebase/auth'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, collection, getCountFromServer } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
 export interface UserData {
@@ -14,6 +14,8 @@ export interface UserData {
   phone: string
   role: 'passenger' | 'company' | 'admin'
   createdAt: Date
+  /** Set when an admin approves the user's operator application. */
+  companyId?: string | null
 }
 
 // Sign up new user
@@ -70,6 +72,34 @@ export const resetPassword = async (email: string) => {
     return { success: true }
   } catch (error: any) {
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update the signed-in user's own profile.
+ *
+ * Only name and phone are writable: the security rules reject any update that
+ * touches other fields, so a user cannot promote their own role here.
+ */
+export const updateUserProfile = async (uid: string, name: string, phone: string) => {
+  try {
+    await updateDoc(doc(db, 'users', uid), { name, phone })
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
+  }
+}
+
+/**
+ * Number of registered users, for the admin dashboard.
+ * Uses an aggregation query so the whole collection is not downloaded to be counted.
+ */
+export const countUsers = async () => {
+  try {
+    const snapshot = await getCountFromServer(collection(db, 'users'))
+    return { success: true, count: snapshot.data().count }
+  } catch (error) {
+    return { success: false, error: (error as Error).message, count: 0 }
   }
 }
 

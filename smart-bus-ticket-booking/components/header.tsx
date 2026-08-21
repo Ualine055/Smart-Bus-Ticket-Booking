@@ -125,6 +125,12 @@ export function Header({
                   <User className="h-4 w-4 mr-2" />
                   {t.profile}
                 </DropdownMenuItem>
+                {(userRole === "company" || userRole === "admin") && (
+                  <DropdownMenuItem onClick={() => router.push("/company-dashboard")}>
+                    <Bus className="h-4 w-4 mr-2" />
+                    {t.companyDashboard}
+                  </DropdownMenuItem>
+                )}
                 {userRole === "admin" && (
                   <DropdownMenuItem onClick={() => router.push("/admin")}>
                     <Shield className="h-4 w-4 mr-2" />
@@ -208,6 +214,16 @@ export function Header({
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
+                  {(userRole === "company" || userRole === "admin") && (
+                    <Link
+                      href="/company-dashboard"
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent flex items-center gap-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Bus className="h-4 w-4" />
+                      {t.companyDashboard}
+                    </Link>
+                  )}
                   {userRole === "admin" && (
                     <Link
                       href="/admin"

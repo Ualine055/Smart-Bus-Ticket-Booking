@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { X, Download, Share2, MapPin, Clock, Calendar, User, QrCode, Bus, ArrowRight } from "lucide-react"
@@ -21,6 +23,8 @@ interface TicketViewProps {
   }
   selectedSeats: string[]
   ticketId: string
+  /** Shown beside the reference; both are needed to reopen the ticket later. */
+  pin?: string
   passengerName: string
   bookingDate: string
   onClose: () => void
@@ -28,28 +32,55 @@ interface TicketViewProps {
   onShare?: () => void
 }
 
-const QR_PATTERN = Array.from({ length: 64 }, (_, i) => {
-  const x = i % 8
-  const y = Math.floor(i / 8)
-  return (x < 3 && y < 3) || (x > 4 && y < 3) || (x < 3 && y > 4) ||
-    (x === 4 || y === 4) || (x + y) % 3 === 0
-})
+/**
+ * A real, scannable QR code holding the ticket reference and PIN.
+ *
+ * Encoded as `TRV-XXXXXXXX:1234` so gate staff scanning with any phone camera
+ * read back the exact reference to type into the validator. Rendered on a white
+ * background regardless of theme, because scanners need the light/dark contrast
+ * the QR standard assumes.
+ */
+const QRCodePattern = ({ value }: { value: string }) => {
+  const [dataUrl, setDataUrl] = useState("")
+  const [failed, setFailed] = useState(false)
 
-// Generate a simple QR code pattern (visual representation)
-const QRCodePattern = () => (
-  <div className="h-32 w-32 bg-white p-2 rounded-lg">
-    <div className="h-full w-full grid grid-cols-8 gap-0.5">
-      {QR_PATTERN.map((filled, i) => (
-        <div
-          key={i}
-          className={`aspect-square ${filled ? "bg-black" : "bg-white"}`}
-        />
-      ))}
+  useEffect(() => {
+    let active = true
+
+    QRCode.toDataURL(value, { width: 256, margin: 1 })
+      .then((url) => {
+        if (active) setDataUrl(url)
+      })
+      .catch(() => {
+        if (active) setFailed(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [value])
+
+  if (failed) {
+    return (
+      <div className="h-32 w-32 rounded-lg bg-secondary flex items-center justify-center p-2">
+        <span className="text-xs text-muted-foreground text-center">
+          QR unavailable - use the ticket ID
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-32 w-32 bg-white p-2 rounded-lg flex items-center justify-center">
+      {dataUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={dataUrl} alt={`QR code for ticket ${value}`} className="h-full w-full" />
+      )}
     </div>
-  </div>
-)
+  )
+}
 
-export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookingDate, onClose, onDownload, onShare }: TicketViewProps) {
+export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, bookingDate, onClose, onDownload, onShare }: TicketViewProps) {
   const totalPrice = selectedSeats.length * bus.price
 
   return (
@@ -145,9 +176,29 @@ export function TicketView({ bus, selectedSeats, ticketId, passengerName, bookin
             </div>
           </div>
 
+          {/* Ticket reference - the passenger has no account, so this is their key */}
+          {pin && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Ticket ID</div>
+                  <div className="font-mono font-bold text-lg">{ticketId}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground mb-1">PIN</div>
+                  <div className="font-mono font-bold text-lg tracking-widest">{pin}</div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Save or share this ticket now. You need the ID and PIN to open it again under
+                My Tickets.
+              </p>
+            </div>
+          )}
+
           {/* QR Code */}
           <div className="flex flex-col items-center py-6 border-t border-dashed border-border">
-            <QRCodePattern />
+            <QRCodePattern value={pin ? `${ticketId}:${pin}` : ticketId} />
             <p className="text-sm text-muted-foreground mt-4 text-center">
               Show this QR code at the station
             </p>

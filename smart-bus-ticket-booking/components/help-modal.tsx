@@ -8,11 +8,26 @@ interface HelpModalProps {
 }
 
 const faqs = [
-  { q: "How do I book a bus ticket?", a: "Search for your route, select a bus, choose your seats, and complete payment." },
-  { q: "Can I cancel my ticket?", a: "Yes, you can cancel up to 2 hours before departure from My Tickets." },
-  { q: "What payment methods are accepted?", a: "We accept MTN MoMo, Airtel Money, and card payments." },
-  { q: "How do I get my ticket?", a: "Your digital ticket with QR code is available instantly after payment." },
-  { q: "What if my bus is delayed?", a: "You will receive an SMS notification with updated departure time." },
+  {
+    q: "Do I need an account to book?",
+    a: "No. Search for your route, choose your seats, enter your name and phone number, and pay. Accounts are only for bus companies and administrators.",
+  },
+  {
+    q: "How do I get my ticket?",
+    a: "Your digital ticket with its QR code appears immediately after payment. Download or share it straight away.",
+  },
+  {
+    q: "How do I find my ticket again later?",
+    a: "Open My Tickets and enter the ticket ID and PIN shown on your ticket. Keep both safe - they are the only way back to it.",
+  },
+  {
+    q: "Can I change my travel time?",
+    a: "Yes. Open your ticket under My Tickets and choose Reschedule, as long as the ticket has not been used and the departure has not passed.",
+  },
+  {
+    q: "What payment methods are accepted?",
+    a: "MTN Mobile Money, Airtel Money, and card. Payment is simulated in this version of the system.",
+  },
 ]
 
 export function HelpModal({ onClose }: HelpModalProps) {
@@ -32,7 +47,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
             {[
               { icon: Phone, label: "Call Us", value: "+250 788 000 000" },
               { icon: Mail, label: "Email", value: "support@busconnect.rw" },
-              { icon: MessageCircle, label: "Live Chat", value: "Available 24/7" },
+              { icon: MessageCircle, label: "Office hours", value: "Mon-Sat, 7am-7pm" },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="bg-secondary/50 rounded-xl p-4 flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

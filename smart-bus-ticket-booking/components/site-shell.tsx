@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/Footer"
@@ -14,14 +14,14 @@ import { logOut } from "@/lib/auth"
 
 type SiteShellProps = {
   children: React.ReactNode
-  /** When true (e.g. /my-tickets), open My Tickets or login after auth is ready */
+  /** When true (e.g. /my-tickets), the ticket lookup opens straight away. */
   initialOpenMyTickets?: boolean
 }
 
 export function SiteShell({ children, initialOpenMyTickets }: SiteShellProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user: firebaseUser, userData, loading: authLoading } = useAuth()
+  const { user: firebaseUser, userData } = useAuth()
 
   const user = useMemo(
     () =>
@@ -34,30 +34,11 @@ export function SiteShell({ children, initialOpenMyTickets }: SiteShellProps) {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [showMyTicketsModal, setShowMyTicketsModal] = useState(false)
+  // Tickets are found by reference and PIN, so /my-tickets can open the lookup
+  // immediately - no need to wait for auth, and no effect required.
+  const [showMyTicketsModal, setShowMyTicketsModal] = useState(Boolean(initialOpenMyTickets))
   const [showPasswordRecovery, setShowPasswordRecovery] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
-
-  const ticketsOpenedRef = useRef(false)
-  const promptedLoginRef = useRef(false)
-
-  useEffect(() => {
-    if (!initialOpenMyTickets || authLoading) return
-
-    if (firebaseUser && userData) {
-      if (!ticketsOpenedRef.current) {
-        ticketsOpenedRef.current = true
-        setShowMyTicketsModal(true)
-      }
-      return
-    }
-
-    if (!firebaseUser && !promptedLoginRef.current) {
-      promptedLoginRef.current = true
-      setAuthMode("login")
-      setShowAuthModal(true)
-    }
-  }, [initialOpenMyTickets, authLoading, firebaseUser, userData])
 
   const onFindBusesClick = () => {
     if (pathname === "/" || pathname === "/search") {
@@ -85,14 +66,7 @@ export function SiteShell({ children, initialOpenMyTickets }: SiteShellProps) {
           setShowMyTicketsModal(false)
         }}
         onProfileClick={() => setShowProfileModal(true)}
-        onMyTicketsClick={() => {
-          if (!user) {
-            setAuthMode("login")
-            setShowAuthModal(true)
-          } else {
-            setShowMyTicketsModal(true)
-          }
-        }}
+        onMyTicketsClick={() => setShowMyTicketsModal(true)}
         onFindBusesClick={onFindBusesClick}
         onHelpClick={() => setShowHelpModal(true)}
       />

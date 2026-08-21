@@ -22,30 +22,60 @@ interface Bus {
   busType: string
 }
 
+export type PaymentMethod = "mtn" | "airtel" | "card"
+
+export type PassengerDetails = {
+  name: string
+  phone: string
+  paymentMethod: PaymentMethod
+}
+
 interface PaymentModalProps {
   bus: Bus
   selectedSeats: string[]
   onClose: () => void
-  onSuccess: () => void
+  /** Receives who is travelling and how they paid, since there is no account to read it from. */
+  onSuccess: (details: PassengerDetails) => void
 }
 
 export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: PaymentModalProps) {
-  const [paymentMethod, setPaymentMethod] = useState<"mtn" | "airtel" | "card">("mtn")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mtn")
+  const [passengerName, setPassengerName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
+  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({})
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
   const totalPrice = selectedSeats.length * bus.price
 
   const handlePayment = async () => {
+    // Passengers travel without an account, so these details are the only
+    // record of who holds the ticket.
+    const found: { name?: string; phone?: string } = {}
+    if (!passengerName.trim()) found.name = "Passenger name is required"
+    if (!phoneNumber.trim()) {
+      found.phone = "Phone number is required"
+    } else if (!/^[0-9+\s-]{7,}$/.test(phoneNumber.trim())) {
+      found.phone = "Enter a valid phone number"
+    }
+
+    setErrors(found)
+    if (Object.keys(found).length > 0) return
+
     setIsProcessing(true)
-    // Simulate payment processing
+    // Simulated settlement. Real MTN MoMo / Airtel Money collection requires
+    // merchant API credentials and a server-side callback, which this academic
+    // build does not have; the chosen method is still recorded on the booking.
     await new Promise((resolve) => setTimeout(resolve, 2000))
     setIsProcessing(false)
     setIsComplete(true)
     // Wait a moment to show success state
     setTimeout(() => {
-      onSuccess()
+      onSuccess({
+        name: passengerName.trim(),
+        phone: phoneNumber.trim(),
+        paymentMethod,
+      })
     }, 1500)
   }
 
@@ -109,12 +139,49 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
             </div>
           </div>
 
+          {/* Passenger details */}
+          <div className="space-y-4 mb-6">
+            <Label className="text-base font-medium">Passenger Details</Label>
+            <div className="space-y-2">
+              <Label htmlFor="passenger-name">Full name</Label>
+              <Input
+                id="passenger-name"
+                placeholder="As it appears on your ID"
+                value={passengerName}
+                onChange={(e) => {
+                  setPassengerName(e.target.value)
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }))
+                }}
+                className={`bg-secondary ${errors.name ? "border-destructive" : ""}`}
+              />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="passenger-phone">Phone number</Label>
+              <Input
+                id="passenger-phone"
+                type="tel"
+                placeholder="07X XXX XXXX"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value)
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }))
+                }}
+                className={`bg-secondary ${errors.phone ? "border-destructive" : ""}`}
+              />
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+              <p className="text-xs text-muted-foreground">
+                Used to confirm your booking and for mobile money payment.
+              </p>
+            </div>
+          </div>
+
           {/* Payment Method */}
           <div className="space-y-4">
             <Label className="text-base font-medium">Payment Method</Label>
             <RadioGroup
               value={paymentMethod}
-              onValueChange={(v) => setPaymentMethod(v as "mtn" | "airtel" | "card")}
+              onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
               className="space-y-3"
             >
               <label
@@ -166,19 +233,10 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
               </label>
             </RadioGroup>
 
-            {/* Phone Input for Mobile Money */}
             {(paymentMethod === "mtn" || paymentMethod === "airtel") && (
-              <div className="space-y-2 mt-4">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="07X XXX XXXX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="bg-secondary"
-                />
-              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                A payment request will be sent to {phoneNumber || "your phone number"}.
+              </p>
             )}
           </div>
         </div>
@@ -189,7 +247,7 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
             onClick={handlePayment}
             className="w-full"
             size="lg"
-            disabled={isProcessing || ((paymentMethod === "mtn" || paymentMethod === "airtel") && !phoneNumber)}
+            disabled={isProcessing}
           >
             {isProcessing ? (
               <>

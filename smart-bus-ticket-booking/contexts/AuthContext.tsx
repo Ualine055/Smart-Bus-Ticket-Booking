@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { User, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { getCurrentUserData, UserData } from '@/lib/auth'
@@ -9,12 +9,15 @@ interface AuthContextType {
   user: User | null
   userData: UserData | null
   loading: boolean
+  /** Re-read the Firestore profile, e.g. after the user edits their details. */
+  refreshUserData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
   loading: true,
+  refreshUserData: async () => {},
 })
 
 export const useAuth = () => {
@@ -47,8 +50,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe
   }, [])
 
+  const refreshUserData = useCallback(async () => {
+    if (!user) return
+    setUserData(await getCurrentUserData(user))
+  }, [user])
+
   return (
-    <AuthContext.Provider value={{ user, userData, loading }}>
+    <AuthContext.Provider value={{ user, userData, loading, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   )

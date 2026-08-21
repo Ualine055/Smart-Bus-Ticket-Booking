@@ -5,39 +5,75 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { X, Mail, CheckCircle, ArrowLeft } from "lucide-react"
+import { resetPassword } from "@/lib/auth"
 
 interface PasswordRecoveryProps {
   isOpen: boolean
   onClose: () => void
 }
 
+/**
+ * Firebase reports a missing account with `auth/user-not-found`. We deliberately
+ * show the same success screen in that case so the form cannot be used to discover
+ * which email addresses are registered (email enumeration).
+ */
+function messageForError(code: string) {
+  switch (code) {
+    case "auth/invalid-email":
+      return "That email address doesn't look valid."
+    case "auth/missing-email":
+      return "Please enter your email address."
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a few minutes and try again."
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again."
+    default:
+      return "Could not send the reset link. Please try again."
+  }
+}
+
 export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
   const [step, setStep] = useState<"email" | "success">("email")
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   if (!isOpen) return null
 
+  const handleClose = () => {
+    setStep("email")
+    setEmail("")
+    setError("")
+    onClose()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    
+
+    const result = await resetPassword(email.trim())
+
     setIsLoading(false)
-    setStep("success")
+
+    if (result.success || String(result.error).includes("auth/user-not-found")) {
+      setStep("success")
+      return
+    }
+
+    const code = String(result.error).match(/\(([^)]+)\)/)?.[1] ?? ""
+    setError(messageForError(code))
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative w-full max-w-md mx-4 bg-card rounded-2xl shadow-2xl overflow-hidden">
         {step === "email" ? (
           <>
             <div className="relative bg-primary p-6 text-center">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="absolute top-4 right-4 p-1 rounded-full hover:bg-primary-foreground/20"
               >
                 <X className="h-5 w-5 text-primary-foreground" />
@@ -59,13 +95,22 @@ export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
                     placeholder="Enter your email"
                     className="pl-10"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (error) setError("")
+                    }}
                     required
                   />
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" size="lg" disabled={isLoading || !email.trim()}>
                 {isLoading ? "Sending..." : "Send Reset Link"}
               </Button>
 
@@ -73,7 +118,7 @@ export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
                 type="button"
                 variant="ghost"
                 className="w-full gap-2"
-                onClick={onClose}
+                onClick={handleClose}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Login
@@ -84,7 +129,7 @@ export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
           <>
             <div className="p-6 text-center">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="absolute top-4 right-4 p-1 rounded-full hover:bg-secondary"
               >
                 <X className="h-5 w-5" />
@@ -108,7 +153,7 @@ export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
                 </ol>
               </div>
 
-              <Button onClick={onClose} className="w-full">
+              <Button onClick={handleClose} className="w-full">
                 Done
               </Button>
             </div>

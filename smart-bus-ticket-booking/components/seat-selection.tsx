@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Check, User } from "lucide-react"
+import { X, Check, User, Loader2, AlertTriangle } from "lucide-react"
+import { getTakenSeats } from "@/lib/bookings"
 
 interface Seat {
   id: string
@@ -30,57 +31,93 @@ interface Bus {
 
 interface SeatSelectionProps {
   bus: Bus
+  /** Travel date (YYYY-MM-DD); seats are only taken for the date being booked. */
+  travelDate: string
+  /** Cap on how many seats may be chosen, from the passenger count in the search. */
+  maxSeats?: number
+  /** Message shown above the map, e.g. when a seat was taken during payment. */
+  notice?: string
   onClose: () => void
   onConfirm: (selectedSeats: string[]) => void
 }
 
-export function SeatSelection({ bus, onClose, onConfirm }: SeatSelectionProps) {
-  const rows = Math.ceil(bus.totalSeats / 4)
-  
-  // Generate initial seats
-  const generateSeats = (): Seat[] => {
-    const seats: Seat[] = []
-    const unavailableSeats = new Set<string>()
-    
-    // Randomly mark some seats as unavailable
-    const takenCount = bus.totalSeats - bus.availableSeats
-    while (unavailableSeats.size < takenCount) {
-      const randomRow = Math.floor(Math.random() * rows) + 1
-      const randomPos = ["A", "B", "C", "D"][Math.floor(Math.random() * 4)] as "A" | "B" | "C" | "D"
-      unavailableSeats.add(`${randomRow}${randomPos}`)
-    }
+/**
+ * Seat ids for a bus, laid out four to a row (A/B | aisle | C/D). The last row
+ * is trimmed so a 45-seat bus shows 45 seats rather than rounding up to 48.
+ */
+function buildSeatIds(totalSeats: number) {
+  const ids: { id: string; row: number; position: "A" | "B" | "C" | "D" }[] = []
+  const rows = Math.ceil(totalSeats / 4)
 
-    for (let row = 1; row <= rows; row++) {
-      for (const position of ["A", "B", "C", "D"] as const) {
-        const id = `${row}${position}`
-        seats.push({
-          id,
-          row,
-          position,
-          isAvailable: !unavailableSeats.has(id),
-          isSelected: false,
-        })
-      }
+  for (let row = 1; row <= rows; row++) {
+    for (const position of ["A", "B", "C", "D"] as const) {
+      if (ids.length >= totalSeats) break
+      ids.push({ id: `${row}${position}`, row, position })
     }
-    return seats
   }
 
-  const [seats, setSeats] = useState<Seat[]>(generateSeats)
+  return ids
+}
+
+export function SeatSelection({
+  bus,
+  travelDate,
+  maxSeats,
+  notice,
+  onClose,
+  onConfirm,
+}: SeatSelectionProps) {
+  const [takenSeats, setTakenSeats] = useState<string[]>([])
+  const [selected, setSelected] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
+
+  // Which seats are already sold, read from bookings rather than invented.
+  // The modal is mounted per bus, so this runs once; `active` guards against a
+  // response arriving after the passenger has closed it.
+  useEffect(() => {
+    let active = true
+
+    getTakenSeats(bus.id, travelDate).then((result) => {
+      if (!active) return
+      if (!result.success) {
+        setLoadError("Could not check which seats are taken. Showing all as available.")
+      }
+      setTakenSeats(result.seats)
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [bus.id, travelDate])
+
+  const seats: Seat[] = useMemo(
+    () =>
+      buildSeatIds(bus.totalSeats).map((seat) => ({
+        ...seat,
+        isAvailable: !takenSeats.includes(seat.id),
+        isSelected: selected.includes(seat.id),
+      })),
+    [bus.totalSeats, takenSeats, selected],
+  )
+
+  const rows = Math.ceil(bus.totalSeats / 4)
   const selectedSeats = seats.filter((s) => s.isSelected)
   const totalPrice = selectedSeats.length * bus.price
+  const availableCount = seats.filter((s) => s.isAvailable).length
+  const limitReached = maxSeats !== undefined && selected.length >= maxSeats
 
   const toggleSeat = (seatId: string) => {
-    setSeats((prev) =>
-      prev.map((seat) =>
-        seat.id === seatId && seat.isAvailable
-          ? { ...seat, isSelected: !seat.isSelected }
-          : seat
-      )
-    )
+    setSelected((prev) => {
+      if (prev.includes(seatId)) return prev.filter((id) => id !== seatId)
+      if (maxSeats !== undefined && prev.length >= maxSeats) return prev
+      return [...prev, seatId]
+    })
   }
 
   const handleConfirm = () => {
-    onConfirm(selectedSeats.map((s) => s.id))
+    onConfirm(selected)
   }
 
   return (
@@ -93,13 +130,46 @@ export function SeatSelection({ bus, onClose, onConfirm }: SeatSelectionProps) {
             <p className="text-sm text-muted-foreground mt-1">
               {bus.company} • {bus.from} → {bus.to}
             </p>
+            {!loading && (
+              <p className="text-sm text-muted-foreground">
+                {availableCount} of {bus.totalSeats} seats available
+                {maxSeats !== undefined && ` • choose up to ${maxSeats}`}
+              </p>
+            )}
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
 
+        {loading ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Checking seat availability...</p>
+          </div>
+        ) : (
         <div className="p-6 overflow-y-auto max-h-[60vh]">
+          {notice && (
+            <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive">{notice}</p>
+            </div>
+          )}
+
+          {loadError && (
+            <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-500">{loadError}</p>
+            </div>
+          )}
+
+          {availableCount === 0 && (
+            <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive">
+                This bus is fully booked for {travelDate}. Please choose another departure.
+              </p>
+            </div>
+          )}
+
           {/* Legend */}
           <div className="flex items-center justify-center gap-6 mb-8">
             <div className="flex items-center gap-2">
@@ -201,6 +271,7 @@ export function SeatSelection({ bus, onClose, onConfirm }: SeatSelectionProps) {
             </div>
           </div>
         </div>
+        )}
 
         {/* Footer */}
         <div className="p-6 border-t border-border bg-secondary/30">
@@ -218,6 +289,11 @@ export function SeatSelection({ bus, onClose, onConfirm }: SeatSelectionProps) {
                   <span className="text-muted-foreground text-sm">No seats selected</span>
                 )}
               </div>
+              {limitReached && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seat limit reached for {maxSeats} {maxSeats === 1 ? "passenger" : "passengers"}.
+                </p>
+              )}
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Total Price</div>
