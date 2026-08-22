@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { X, Check, User, Loader2, AlertTriangle } from "lucide-react"
 import { getTakenSeats } from "@/lib/bookings"
+import { useLanguage, format } from "@/contexts/LanguageContext"
 
 interface Seat {
   id: string
@@ -67,6 +68,7 @@ export function SeatSelection({
   onClose,
   onConfirm,
 }: SeatSelectionProps) {
+  const { t } = useLanguage()
   const [takenSeats, setTakenSeats] = useState<string[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,7 +83,7 @@ export function SeatSelection({
     getTakenSeats(bus.id, travelDate).then((result) => {
       if (!active) return
       if (!result.success) {
-        setLoadError("Could not check which seats are taken. Showing all as available.")
+        setLoadError(t.seatCheckFailed)
       }
       setTakenSeats(result.seats)
       setLoading(false)
@@ -126,14 +128,17 @@ export function SeatSelection({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
-            <h2 className="text-xl font-bold">Select Your Seats</h2>
+            <h2 className="text-xl font-bold">{t.selectYourSeats}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {bus.company} • {bus.from} → {bus.to}
             </p>
             {!loading && (
               <p className="text-sm text-muted-foreground">
-                {availableCount} of {bus.totalSeats} seats available
-                {maxSeats !== undefined && ` • choose up to ${maxSeats}`}
+                {format(t.seatsAvailableOf, {
+                  available: availableCount,
+                  total: bus.totalSeats,
+                })}
+                {maxSeats !== undefined && ` • ${format(t.chooseUpTo, { max: maxSeats })}`}
               </p>
             )}
           </div>
@@ -145,7 +150,7 @@ export function SeatSelection({
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Checking seat availability...</p>
+            <p className="text-sm text-muted-foreground">{t.checkingSeats}</p>
           </div>
         ) : (
         <div className="p-6 overflow-y-auto max-h-[60vh]">
@@ -165,7 +170,7 @@ export function SeatSelection({
           {availableCount === 0 && (
             <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
               <p className="text-sm text-destructive">
-                This bus is fully booked for {travelDate}. Please choose another departure.
+                {format(t.fullyBooked, { date: travelDate })}
               </p>
             </div>
           )}
@@ -174,19 +179,19 @@ export function SeatSelection({
           <div className="flex items-center justify-center gap-6 mb-8">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-secondary border border-border" />
-              <span className="text-sm text-muted-foreground">Available</span>
+              <span className="text-sm text-muted-foreground">{t.seatAvailable}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <Check className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="text-sm text-muted-foreground">Selected</span>
+              <span className="text-sm text-muted-foreground">{t.seatSelected}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
                 <User className="h-4 w-4 text-muted-foreground" />
               </div>
-              <span className="text-sm text-muted-foreground">Taken</span>
+              <span className="text-sm text-muted-foreground">{t.seatTaken}</span>
             </div>
           </div>
 
@@ -195,7 +200,7 @@ export function SeatSelection({
             {/* Driver */}
             <div className="w-full max-w-[280px] flex justify-end mb-4 pr-2">
               <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                <span className="text-xs text-muted-foreground">Driver</span>
+                <span className="text-xs text-muted-foreground">{t.driver}</span>
               </div>
             </div>
 
@@ -277,7 +282,7 @@ export function SeatSelection({
         <div className="p-6 border-t border-border bg-secondary/30">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-sm text-muted-foreground">Selected Seats</div>
+              <div className="text-sm text-muted-foreground">{t.selectedSeats}</div>
               <div className="flex items-center gap-2 mt-1">
                 {selectedSeats.length > 0 ? (
                   selectedSeats.map((seat) => (
@@ -286,17 +291,17 @@ export function SeatSelection({
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-muted-foreground text-sm">No seats selected</span>
+                  <span className="text-muted-foreground text-sm">{t.noSeatsSelected}</span>
                 )}
               </div>
               {limitReached && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Seat limit reached for {maxSeats} {maxSeats === 1 ? "passenger" : "passengers"}.
+                  {format(t.seatLimitReached, { max: maxSeats })}
                 </p>
               )}
             </div>
             <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total Price</div>
+              <div className="text-sm text-muted-foreground">{t.totalPrice}</div>
               <div className="text-2xl font-bold text-primary">
                 {totalPrice.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">RWF</span>
               </div>
@@ -308,7 +313,7 @@ export function SeatSelection({
             size="lg"
             disabled={selectedSeats.length === 0}
           >
-            Proceed to Payment
+            {t.proceedToPayment}
           </Button>
         </div>
       </div>

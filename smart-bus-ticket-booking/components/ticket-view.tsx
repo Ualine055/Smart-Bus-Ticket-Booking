@@ -5,6 +5,7 @@ import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { X, Download, Share2, MapPin, Clock, Calendar, User, QrCode, Bus, ArrowRight } from "lucide-react"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 interface TicketViewProps {
   bus: {
@@ -41,6 +42,7 @@ interface TicketViewProps {
  * the QR standard assumes.
  */
 const QRCodePattern = ({ value }: { value: string }) => {
+  const { t } = useLanguage()
   const [dataUrl, setDataUrl] = useState("")
   const [failed, setFailed] = useState(false)
 
@@ -64,7 +66,7 @@ const QRCodePattern = ({ value }: { value: string }) => {
     return (
       <div className="h-32 w-32 rounded-lg bg-secondary flex items-center justify-center p-2">
         <span className="text-xs text-muted-foreground text-center">
-          QR unavailable - use the ticket ID
+          {t.qrUnavailable}
         </span>
       </div>
     )
@@ -81,6 +83,7 @@ const QRCodePattern = ({ value }: { value: string }) => {
 }
 
 export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, bookingDate, onClose, onDownload, onShare }: TicketViewProps) {
+  const { t } = useLanguage()
   const totalPrice = selectedSeats.length * bus.price
 
   return (
@@ -94,7 +97,7 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
             </div>
             <div>
               <h2 className="text-xl font-bold">BUS CONNECT</h2>
-              <p className="text-sm text-muted-foreground">Digital Bus Ticket</p>
+              <p className="text-sm text-muted-foreground">{t.digitalBusTicket}</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -106,9 +109,9 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
           {/* Ticket Status */}
           <div className="flex items-center justify-between mb-6">
             <Badge className="bg-primary/20 text-primary hover:bg-primary/20 px-3 py-1">
-              Confirmed
+              {t.confirmed}
             </Badge>
-            <span className="text-sm text-muted-foreground">Ticket #{ticketId}</span>
+            <span className="text-sm text-muted-foreground">{t.ticketNo} #{ticketId}</span>
           </div>
 
           {/* Route Info */}
@@ -149,28 +152,28 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
             <div className="bg-secondary/50 rounded-xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <User className="h-4 w-4" />
-                Passenger
+                {t.passengerLabel}
               </div>
               <div className="font-medium">{passengerName}</div>
             </div>
             <div className="bg-secondary/50 rounded-xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <Calendar className="h-4 w-4" />
-                Travel Date
+                {t.travelDateLabel}
               </div>
               <div className="font-medium">{bookingDate}</div>
             </div>
             <div className="bg-secondary/50 rounded-xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <Bus className="h-4 w-4" />
-                Bus Company
+                {t.busCompanyLabel}
               </div>
               <div className="font-medium">{bus.company}</div>
             </div>
             <div className="bg-secondary/50 rounded-xl p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
                 <QrCode className="h-4 w-4" />
-                Seat(s)
+                {t.seatLabelPlural}
               </div>
               <div className="font-medium">{selectedSeats.join(", ")}</div>
             </div>
@@ -181,17 +184,16 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-1">Ticket ID</div>
+                  <div className="text-sm text-muted-foreground mb-1">{t.ticketIdLabel}</div>
                   <div className="font-mono font-bold text-lg">{ticketId}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground mb-1">PIN</div>
+                  <div className="text-sm text-muted-foreground mb-1">{t.pinLabel}</div>
                   <div className="font-mono font-bold text-lg tracking-widest">{pin}</div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Save or share this ticket now. You need the ID and PIN to open it again under
-                My Tickets.
+                {t.saveTicketNote}
               </p>
             </div>
           )}
@@ -200,13 +202,13 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
           <div className="flex flex-col items-center py-6 border-t border-dashed border-border">
             <QRCodePattern value={pin ? `${ticketId}:${pin}` : ticketId} />
             <p className="text-sm text-muted-foreground mt-4 text-center">
-              Show this QR code at the station
+              {t.showQrNote}
             </p>
           </div>
 
           {/* Price */}
           <div className="flex items-center justify-between py-4 border-t border-border">
-            <span className="text-muted-foreground">Total Paid</span>
+            <span className="text-muted-foreground">{t.totalPaid}</span>
             <span className="text-2xl font-bold text-primary">
               {totalPrice.toLocaleString()} RWF
             </span>
@@ -217,11 +219,11 @@ export function TicketView({ bus, selectedSeats, ticketId, pin, passengerName, b
         <div className="p-6 border-t border-border bg-secondary/30 flex gap-3">
           <Button variant="outline" className="flex-1 gap-2 bg-transparent" onClick={onDownload}>
             <Download className="h-4 w-4" />
-            Download
+            {t.download}
           </Button>
           <Button variant="outline" className="flex-1 gap-2 bg-transparent" onClick={onShare}>
             <Share2 className="h-4 w-4" />
-            Share
+            {t.share}
           </Button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { X, Smartphone, CreditCard, Loader2, Check } from "lucide-react"
+import { useLanguage, format } from "@/contexts/LanguageContext"
 
 interface Bus {
   id: string
@@ -39,6 +40,7 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: PaymentModalProps) {
+  const { t } = useLanguage()
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mtn")
   const [passengerName, setPassengerName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
@@ -52,11 +54,11 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
     // Passengers travel without an account, so these details are the only
     // record of who holds the ticket.
     const found: { name?: string; phone?: string } = {}
-    if (!passengerName.trim()) found.name = "Passenger name is required"
+    if (!passengerName.trim()) found.name = t.nameRequired
     if (!phoneNumber.trim()) {
-      found.phone = "Phone number is required"
+      found.phone = t.phoneRequired
     } else if (!/^[0-9+\s-]{7,}$/.test(phoneNumber.trim())) {
-      found.phone = "Enter a valid phone number"
+      found.phone = t.phoneInvalid
     }
 
     setErrors(found)
@@ -86,9 +88,9 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
           <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
             <Check className="h-10 w-10 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
+          <h2 className="text-2xl font-bold mb-2">{t.paymentSuccessful}</h2>
           <p className="text-muted-foreground">
-            Your ticket has been confirmed. Redirecting to your ticket...
+            {t.ticketConfirmed}
           </p>
         </div>
       </div>
@@ -101,9 +103,9 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
-            <h2 className="text-xl font-bold">Complete Payment</h2>
+            <h2 className="text-xl font-bold">{t.completePayment}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Secure checkout
+              {t.secureCheckout}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} disabled={isProcessing}>
@@ -114,26 +116,26 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
         <div className="p-6">
           {/* Order Summary */}
           <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-            <h3 className="font-medium mb-3">Order Summary</h3>
+            <h3 className="font-medium mb-3">{t.orderSummary}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Route</span>
+                <span className="text-muted-foreground">{t.routeLabel}</span>
                 <span>{bus.from} → {bus.to}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Bus Company</span>
+                <span className="text-muted-foreground">{t.busCompanyLabel}</span>
                 <span>{bus.company}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Departure</span>
+                <span className="text-muted-foreground">{t.departureLabel}</span>
                 <span>{bus.departureTime}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Seats</span>
+                <span className="text-muted-foreground">{t.seatsLabel}</span>
                 <span>{selectedSeats.join(", ")}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-border font-medium">
-                <span>Total</span>
+                <span>{t.totalLabel}</span>
                 <span className="text-primary">{totalPrice.toLocaleString()} RWF</span>
               </div>
             </div>
@@ -141,12 +143,12 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
 
           {/* Passenger details */}
           <div className="space-y-4 mb-6">
-            <Label className="text-base font-medium">Passenger Details</Label>
+            <Label className="text-base font-medium">{t.passengerDetails}</Label>
             <div className="space-y-2">
-              <Label htmlFor="passenger-name">Full name</Label>
+              <Label htmlFor="passenger-name">{t.fullNameLabel}</Label>
               <Input
                 id="passenger-name"
-                placeholder="As it appears on your ID"
+                placeholder={t.fullNamePlaceholder}
                 value={passengerName}
                 onChange={(e) => {
                   setPassengerName(e.target.value)
@@ -157,7 +159,7 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="passenger-phone">Phone number</Label>
+              <Label htmlFor="passenger-phone">{t.phoneLabel}</Label>
               <Input
                 id="passenger-phone"
                 type="tel"
@@ -171,14 +173,14 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
               />
               {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
               <p className="text-xs text-muted-foreground">
-                Used to confirm your booking and for mobile money payment.
+                {t.phoneHelp}
               </p>
             </div>
           </div>
 
           {/* Payment Method */}
           <div className="space-y-4">
-            <Label className="text-base font-medium">Payment Method</Label>
+            <Label className="text-base font-medium">{t.paymentMethodLabel}</Label>
             <RadioGroup
               value={paymentMethod}
               onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
@@ -195,8 +197,8 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
                   <Smartphone className="h-5 w-5 text-black" />
                 </div>
                 <div>
-                  <div className="font-medium">MTN Mobile Money</div>
-                  <div className="text-sm text-muted-foreground">Pay with MTN MoMo</div>
+                  <div className="font-medium">{t.mtnMoMo}</div>
+                  <div className="text-sm text-muted-foreground">{t.payWithMtn}</div>
                 </div>
               </label>
 
@@ -211,8 +213,8 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
                   <Smartphone className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="font-medium">Airtel Money</div>
-                  <div className="text-sm text-muted-foreground">Pay with Airtel Money</div>
+                  <div className="font-medium">{t.airtelMoney}</div>
+                  <div className="text-sm text-muted-foreground">{t.payWithAirtel}</div>
                 </div>
               </label>
 
@@ -227,15 +229,15 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-medium">Debit/Credit Card</div>
-                  <div className="text-sm text-muted-foreground">Visa, Mastercard</div>
+                  <div className="font-medium">{t.cardPayment}</div>
+                  <div className="text-sm text-muted-foreground">{t.cardTypes}</div>
                 </div>
               </label>
             </RadioGroup>
 
             {(paymentMethod === "mtn" || paymentMethod === "airtel") && (
               <p className="text-xs text-muted-foreground mt-4">
-                A payment request will be sent to {phoneNumber || "your phone number"}.
+                {format(t.paymentRequestNote, { phone: phoneNumber || t.yourPhoneNumber })}
               </p>
             )}
           </div>
@@ -252,14 +254,14 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Processing...
+                {t.processing}
               </>
             ) : (
-              `Pay ${totalPrice.toLocaleString()} RWF`
+              format(t.payAmount, { amount: totalPrice.toLocaleString() })
             )}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-4">
-            Your payment is secure and encrypted
+            {t.paymentSecureNote}
           </p>
         </div>
       </div>

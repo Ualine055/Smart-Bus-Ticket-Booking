@@ -10,40 +10,42 @@ import {
   CheckCircle, XCircle, AlertTriangle, Search,
 } from "lucide-react"
 import { findTicket, getTicketState, type Booking, type TicketState } from "@/lib/bookings"
+import { useLanguage, type Translations } from "@/contexts/LanguageContext"
 import { RescheduleModal } from "@/components/reschedule-modal"
 
 interface MyTicketsModalProps {
   onClose: () => void
 }
 
+/** Colours and icon per state; the wording comes from the active language. */
 const STATE_STYLES: Record<
   TicketState,
-  { label: string; detail: string; badge: string; Icon: typeof CheckCircle; tone: string }
+  { label: keyof Translations; detail: keyof Translations; badge: string; Icon: typeof CheckCircle; tone: string }
 > = {
   valid: {
-    label: "Valid",
-    detail: "This ticket has not been used yet and can still be scanned at the gate.",
+    label: "stateValid",
+    detail: "stateValidDetail",
     badge: "bg-primary/20 text-primary hover:bg-primary/20",
     Icon: CheckCircle,
     tone: "text-primary",
   },
   used: {
-    label: "Used",
-    detail: "This ticket was scanned and the passenger has boarded.",
+    label: "stateUsed",
+    detail: "stateUsedDetail",
     badge: "bg-primary/20 text-primary hover:bg-primary/20",
     Icon: CheckCircle,
     tone: "text-primary",
   },
   expired: {
-    label: "Expired",
-    detail: "The departure time has passed and this ticket was never used.",
+    label: "stateExpired",
+    detail: "stateExpiredDetail",
     badge: "bg-amber-500/20 text-amber-500 hover:bg-amber-500/20",
     Icon: AlertTriangle,
     tone: "text-amber-500",
   },
   cancelled: {
-    label: "Cancelled",
-    detail: "This booking was cancelled and cannot be used.",
+    label: "stateCancelled",
+    detail: "stateCancelledDetail",
     badge: "bg-destructive/20 text-destructive hover:bg-destructive/20",
     Icon: XCircle,
     tone: "text-destructive",
@@ -51,6 +53,7 @@ const STATE_STYLES: Record<
 }
 
 export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
+  const { t } = useLanguage()
   const [ticketId, setTicketId] = useState("")
   const [pin, setPin] = useState("")
   const [ticket, setTicket] = useState<Booking | null>(null)
@@ -77,8 +80,8 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
     // which ticket references exist.
     setError(
       result.error === "notFound" || result.error === "wrongPin"
-        ? "No ticket matches that ID and PIN. Check both and try again."
-        : "Could not look up your ticket. Please try again.",
+        ? t.ticketNotFound
+        : t.lookupFailed,
     )
   }
 
@@ -96,7 +99,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-card border border-border rounded-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-bold">My Tickets</h2>
+          <h2 className="text-xl font-bold">{t.myTickets}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
@@ -107,14 +110,14 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
             <div className="max-w-md mx-auto space-y-5 py-4">
               <div className="text-center">
                 <Ticket className="h-12 w-12 mx-auto text-primary mb-3" />
-                <h3 className="text-lg font-medium mb-1">Find your ticket</h3>
+                <h3 className="text-lg font-medium mb-1">{t.findYourTicket}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Enter the ticket ID and PIN from the ticket you received after paying.
+                  {t.findTicketHelp}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lookup-id">Ticket ID</Label>
+                <Label htmlFor="lookup-id">{t.ticketIdLabel}</Label>
                 <Input
                   id="lookup-id"
                   placeholder="TRV-XXXXXXXX"
@@ -130,7 +133,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lookup-pin">PIN</Label>
+                <Label htmlFor="lookup-pin">{t.pinLabel}</Label>
                 <Input
                   id="lookup-pin"
                   placeholder="0000"
@@ -160,12 +163,12 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Searching...
+                    {t.searchingTicket}
                   </>
                 ) : (
                   <>
                     <Search className="h-4 w-4" />
-                    Find my ticket
+                    {t.findMyTicket}
                   </>
                 )}
               </Button>
@@ -177,8 +180,8 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-secondary/50">
                   <style.Icon className={`h-6 w-6 shrink-0 ${style.tone}`} />
                   <div>
-                    <div className="font-medium">{style.label}</div>
-                    <p className="text-sm text-muted-foreground">{style.detail}</p>
+                    <div className="font-medium">{t[style.label]}</div>
+                    <p className="text-sm text-muted-foreground">{t[style.detail]}</p>
                   </div>
                 </div>
 
@@ -186,19 +189,19 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <div className="font-medium text-sm text-muted-foreground">
-                        Ticket #{ticket.ticketId}
+                        {t.ticketNo} #{ticket.ticketId}
                       </div>
                       <div className="text-lg font-bold mt-1">{ticket.busCompany}</div>
                       <div className="text-sm text-muted-foreground">{ticket.passengerName}</div>
                     </div>
-                    <Badge className={style.badge}>{state}</Badge>
+                    <Badge className={style.badge}>{t[style.label]}</Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-3">
                     <div>
                       <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
                         <MapPin className="h-3 w-3" />
-                        Route
+                        {t.routeLabel}
                       </div>
                       <div className="font-medium">
                         {ticket.route.from} → {ticket.route.to}
@@ -207,7 +210,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                     <div>
                       <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
                         <Calendar className="h-3 w-3" />
-                        Date
+                        {t.date}
                       </div>
                       <div className="font-medium">{ticket.travelDate}</div>
                     </div>
@@ -221,7 +224,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                       </div>
                       <div className="flex items-center gap-1">
                         <Ticket className="h-3 w-3 text-muted-foreground" />
-                        <span>Seats: {ticket.seats.join(", ")}</span>
+                        <span>{t.seatsLabel}: {ticket.seats.join(", ")}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -236,7 +239,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                           onClick={() => setRescheduling(true)}
                         >
                           <RefreshCw className="h-3 w-3" />
-                          Reschedule
+                          {t.reschedule}
                         </Button>
                       )}
                     </div>
@@ -244,7 +247,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
                 </div>
 
                 <Button variant="outline" onClick={reset} className="w-full">
-                  Look up another ticket
+                  {t.lookUpAnother}
                 </Button>
               </div>
             )
@@ -253,7 +256,7 @@ export function MyTicketsModal({ onClose }: MyTicketsModalProps) {
 
         <div className="p-6 border-t border-border">
           <Button onClick={onClose} variant="outline" className="w-full">
-            Close
+            {t.close}
           </Button>
         </div>
       </div>

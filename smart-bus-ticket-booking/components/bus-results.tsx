@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, MapPin, Users, Wifi, Zap, Wind, ChevronDown, ChevronRight } from "lucide-react"
+import { useLanguage, format } from "@/contexts/LanguageContext"
 
 interface Bus {
   id: string
@@ -35,6 +36,7 @@ const amenityIcons: Record<string, React.ReactNode> = {
 
 export function BusResults({ buses, onSelectBus }: BusResultsProps) {
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
+  const { t } = useLanguage()
 
   if (buses.length === 0) {
     return null
@@ -60,8 +62,13 @@ export function BusResults({ buses, onSelectBus }: BusResultsProps) {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold">Available Buses</h2>
-            <p className="text-muted-foreground mt-1">{buses.length} schedule slots found across {companyEntries.length} bus lines</p>
+            <h2 className="text-2xl font-bold">{t.availableBuses}</h2>
+            <p className="text-muted-foreground mt-1">
+              {format(t.resultsSummary, {
+                slots: buses.length,
+                lines: companyEntries.length,
+              })}
+            </p>
           </div>
         </div>
 
@@ -86,7 +93,9 @@ export function BusResults({ buses, onSelectBus }: BusResultsProps) {
                         <Badge className="text-xs border-border bg-secondary text-secondary-foreground">
                           {sampleBus.busType}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">{companyBuses.length} departures today</span>
+                        <span className="text-xs text-muted-foreground">
+                          {companyBuses.length} {t.departures}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -157,11 +166,11 @@ export function BusResults({ buses, onSelectBus }: BusResultsProps) {
                             </div>
                             <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1 justify-end">
                               <Users className="h-3.5 w-3.5" />
-                              {bus.availableSeats} seats left
+                              {bus.availableSeats} {t.seatsLeft}
                             </div>
                           </div>
                           <Button onClick={() => onSelectBus(bus)} disabled={bus.availableSeats === 0}>
-                            Select Seats
+                            {t.selectSeatsBtn}
                           </Button>
                         </div>
                       </div>
