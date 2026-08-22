@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { SiteShell } from "@/components/site-shell"
 import { useAuth } from "@/contexts/AuthContext"
@@ -89,9 +89,11 @@ function todayIso() {
 
 export type HomePageContentProps = {
   autoOpenMyTickets?: boolean
+  /** Jump to the search form on load, for /search deep links. */
+  scrollToSearch?: boolean
 }
 
-export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
+export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageContentProps) {
   const { user: firebaseUser } = useAuth()
   const { t } = useLanguage()
 
@@ -115,6 +117,12 @@ export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
 
   /** The date being booked; falls back to today when the search left it blank. */
   const travelDate = searchParams.date || todayIso()
+
+  // Scrolling is a DOM side effect, which is what effects are for.
+  useEffect(() => {
+    if (!scrollToSearch) return
+    document.getElementById("search-section")?.scrollIntoView({ behavior: "smooth" })
+  }, [scrollToSearch])
 
   const handleSearch = async (from: string, to: string, date: string, passengers: number) => {
     setSearchParams({ from, to, date, passengers })

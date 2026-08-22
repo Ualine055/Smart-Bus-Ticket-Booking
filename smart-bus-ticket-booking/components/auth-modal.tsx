@@ -90,7 +90,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = "login", o
       } else {
         setErrors({ general: result.error || "Authentication failed" })
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: "An unexpected error occurred" })
     } finally {
       setIsLoading(false)

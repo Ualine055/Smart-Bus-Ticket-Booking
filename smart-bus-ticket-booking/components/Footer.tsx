@@ -78,16 +78,6 @@ export function Footer() {
                   {t.companyDashboard}
                 </Link>
               </li>
-              <li>
-                <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                  {t.pricing}
-                </Link>
-              </li>
-              <li>
-                <Link href="/api-access" className="text-muted-foreground hover:text-foreground transition-colors">
-                  {t.apiAccess}
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -95,11 +85,6 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-4">{t.supportFooter}</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
-                  {t.helpCenter}
-                </Link>
-              </li>
               <li>
                 <Link href="/faq" className="text-muted-foreground hover:text-foreground transition-colors">
                   {t.faq}

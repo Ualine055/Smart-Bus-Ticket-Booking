@@ -22,7 +22,7 @@ export default function UnauthorizedPage() {
             Back to home
           </Link>
           <Link
-            href="/help"
+            href="/contact"
             className={cn(
               "inline-flex h-10 items-center justify-center rounded-md px-4 py-2 font-medium",
               "border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors",

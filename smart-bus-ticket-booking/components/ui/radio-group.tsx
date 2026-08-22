@@ -24,7 +24,7 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 )
 RadioGroup.displayName = "RadioGroup"
 
-export interface RadioGroupItemProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type RadioGroupItemProps = React.InputHTMLAttributes<HTMLInputElement>
 
 const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
   ({ className, ...props }, ref) => {
