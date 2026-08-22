@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { SiteShell } from "@/components/site-shell"
 import { useAuth } from "@/contexts/AuthContext"
+import { useLanguage, format } from "@/contexts/LanguageContext"
 import {
   createBooking,
   getSeatsTakenOn,
@@ -92,6 +93,7 @@ export type HomePageContentProps = {
 
 export function HomePageContent({ autoOpenMyTickets }: HomePageContentProps) {
   const { user: firebaseUser } = useAuth()
+  const { t } = useLanguage()
 
   const [viewState, setViewState] = useState<ViewState>("search")
   const [searchResults, setSearchResults] = useState<Bus[]>([])
@@ -292,7 +294,7 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           <section id="bus-results" className="py-12">
             <div className="container mx-auto px-4 flex items-center justify-center gap-3 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              Searching for available buses...
+              {t.searchingBuses}
             </div>
           </section>
         )}
@@ -300,12 +302,12 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
         {viewState !== "search" && !searching && searchResults.length === 0 && (
           <section id="bus-results" className="py-12">
             <div className="container mx-auto px-4 text-center max-w-md">
-              <h2 className="text-xl font-bold mb-2">No buses on this route</h2>
+              <h2 className="text-xl font-bold mb-2">{t.noBusesTitle}</h2>
               <p className="text-muted-foreground text-sm">
-                No operator has published a departure from{" "}
-                <span className="text-foreground">{searchParams.from || "anywhere"}</span> to{" "}
-                <span className="text-foreground">{searchParams.to || "anywhere"}</span> yet. Try
-                another route, or leave both fields empty to see every available trip.
+                {format(t.noBusesBody, {
+                  from: searchParams.from || t.anywhere,
+                  to: searchParams.to || t.anywhere,
+                })}
               </p>
             </div>
           </section>

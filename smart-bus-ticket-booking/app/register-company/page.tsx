@@ -67,6 +67,7 @@ export default function RegisterCompanyPage() {
     if (authLoading) return
 
     if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChecking(false)
       return
     }
@@ -80,6 +81,7 @@ export default function RegisterCompanyPage() {
   // Prefill contact details from the signed-in account.
   useEffect(() => {
     if (userData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm((prev) => ({
         ...prev,
         email: prev.email || userData.email || "",

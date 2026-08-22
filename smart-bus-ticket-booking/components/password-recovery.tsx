@@ -141,7 +141,7 @@ export function PasswordRecovery({ isOpen, onClose }: PasswordRecoveryProps) {
 
               <h2 className="text-2xl font-bold mb-2">Check Your Email</h2>
               <p className="text-muted-foreground mb-6">
-                We've sent a password reset link to <strong>{email}</strong>
+                We&apos;ve sent a password reset link to <strong>{email}</strong>
               </p>
 
               <div className="bg-secondary/50 rounded-xl p-4 text-sm text-left mb-6">

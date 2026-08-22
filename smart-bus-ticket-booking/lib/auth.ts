@@ -34,8 +34,8 @@ export const signUp = async (email: string, password: string, name: string, phon
     })
 
     return { success: true, user }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -50,8 +50,8 @@ export const signIn = async (email: string, password: string) => {
     const userData = userDoc.data() as UserData
 
     return { success: true, user, userData }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -60,8 +60,8 @@ export const logOut = async () => {
   try {
     await signOut(auth)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -70,8 +70,8 @@ export const resetPassword = async (email: string) => {
   try {
     await sendPasswordResetEmail(auth, email)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: (error as Error).message }
   }
 }
 
@@ -108,7 +108,7 @@ export const getCurrentUserData = async (user: User) => {
   try {
     const userDoc = await getDoc(doc(db, 'users', user.uid))
     return userDoc.data() as UserData
-  } catch (error) {
+  } catch {
     return null
   }
 }

@@ -92,7 +92,7 @@ export function SeatSelection({
     return () => {
       active = false
     }
-  }, [bus.id, travelDate])
+  }, [bus.id, travelDate, t.seatCheckFailed])
 
   const seats: Seat[] = useMemo(
     () =>

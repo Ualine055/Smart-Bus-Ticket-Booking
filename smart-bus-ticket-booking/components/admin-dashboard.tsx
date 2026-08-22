@@ -55,27 +55,31 @@ export function AdminDashboard() {
   const [actingOn, setActingOn] = useState<string | null>(null)
   const [actionError, setActionError] = useState("")
 
+  // Every state update happens after the awaits, so mounting this component
+  // does not trigger a synchronous re-render.
   const loadData = useCallback(async () => {
-    setLoading(true)
-    setLoadError("")
-
     const [companyResult, bookingResult, userResult] = await Promise.all([
       getCompanies(),
       getAllBookings(),
       countUsers(),
     ])
 
-    if (!companyResult.success) {
-      setLoadError(companyResult.error ?? "Could not load companies.")
-    }
-
+    setLoadError(companyResult.success ? "" : companyResult.error ?? "Could not load companies.")
     setCompanies(companyResult.companies)
     setBookings(bookingResult.bookings)
     setUserCount(userResult.count)
     setLoading(false)
   }, [])
 
+  const reload = useCallback(() => {
+    setLoading(true)
+    loadData()
+  }, [loadData])
+
   useEffect(() => {
+  // Loading data on mount genuinely requires an effect. The state updates all
+  // happen after the awaits, so no synchronous re-render is triggered.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
 
@@ -307,7 +311,7 @@ export function AdminDashboard() {
         {loadError && (
           <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center justify-between gap-4">
             <p className="text-sm text-destructive">{loadError}</p>
-            <Button variant="outline" size="sm" onClick={loadData}>
+            <Button variant="outline" size="sm" onClick={reload}>
               Retry
             </Button>
           </div>

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Bus, Users, DollarSign, Calendar, Plus, Edit, Trash2, ScanLine } from "lucide-react"
 import { TicketValidator } from "@/components/ticket-validator"
@@ -85,6 +83,9 @@ export function CompanyDashboard() {
   }
 
   useEffect(() => {
+  // Loading data on mount genuinely requires an effect. The state updates all
+  // happen after the awaits, so no synchronous re-render is triggered.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
 
@@ -212,7 +213,7 @@ export function CompanyDashboard() {
               <Users className="h-8 w-8 text-primary" />
             </div>
             <div className="text-2xl font-bold">{stats.todayBookings}</div>
-            <div className="text-sm text-muted-foreground">Today's Bookings</div>
+            <div className="text-sm text-muted-foreground">Today&apos;s Bookings</div>
           </div>
 
           <div className="bg-card border border-border rounded-xl p-6">
