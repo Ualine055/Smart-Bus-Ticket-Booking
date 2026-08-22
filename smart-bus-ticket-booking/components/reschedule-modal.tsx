@@ -1,34 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { X, Clock, Smartphone, CreditCard, Loader2, Check, AlertCircle } from "lucide-react"
-import { rescheduleBooking, Booking } from "@/lib/bookings"
+import { rescheduleBooking, getSeatsTakenOn, seatExists, type Booking } from "@/lib/bookings"
+import { searchSchedules, type Schedule } from "@/lib/schedules"
 
 const RESCHEDULE_FEE = 500 // RWF
-
-// Generate time slots every 30 min from 05:00 to 22:00
-const TIME_SLOTS = Array.from({ length: 35 }, (_, i) => {
-  const totalMinutes = 5 * 60 + i * 30
-  const h = Math.floor(totalMinutes / 60).toString().padStart(2, "0")
-  const m = (totalMinutes % 60).toString().padStart(2, "0")
-  return `${h}:${m}`
-})
-
-function addDuration(time: string, durationStr: string): string {
-  const [h, m] = time.split(":").map(Number)
-  const match = durationStr.match(/(\d+)h\s*(\d+)?m?/)
-  if (!match) return time
-  const dh = parseInt(match[1] || "0")
-  const dm = parseInt(match[2] || "0")
-  const total = h * 60 + m + dh * 60 + dm
-  const nh = Math.floor(total / 60) % 24
-  const nm = total % 60
-  return `${nh.toString().padStart(2, "0")}:${nm.toString().padStart(2, "0")}`
-}
 
 interface RescheduleModalProps {
   booking: Booking
@@ -38,51 +19,128 @@ interface RescheduleModalProps {
 
 type Step = "select" | "payment" | "done"
 
+/** A departure the passenger could move to, with its seat situation resolved. */
+type Option = {
+  schedule: Schedule
+  arrivalTime: string
+  seatsFree: boolean
+  /** Extra to pay if the new departure costs more per seat than the original. */
+  fareDifference: number
+  blockedReason?: string
+}
+
+function toMinutes(hhmm: string) {
+  const [h, m] = hhmm.split(":").map(Number)
+  return h * 60 + m
+}
+
+function toTime(totalMinutes: number) {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`
+}
+
 export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModalProps) {
   const [step, setStep] = useState<Step>("select")
-  const [selectedTime, setSelectedTime] = useState("")
+  const [options, setOptions] = useState<Option[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<"mtn" | "airtel" | "card">("mtn")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState("")
 
-  // Filter out the current departure time
-  const availableSlots = TIME_SLOTS.filter((t) => t !== booking.route.departureTime)
+  const seats = useMemo(() => booking.seats ?? [], [booking.seats])
+  const paidPerSeat = seats.length > 0 ? booking.totalPrice / seats.length : booking.totalPrice
 
-  // Estimate trip duration from original times
-  const estimateDuration = (): string => {
-    const [dh, dm] = booking.route.departureTime.split(":").map(Number)
-    const [ah, am] = booking.route.arrivalTime.split(":").map(Number)
-    const diff = (ah * 60 + am) - (dh * 60 + dm)
-    const h = Math.floor(Math.abs(diff) / 60)
-    const m = Math.abs(diff) % 60
-    return `${h}h ${m}m`
-  }
+  // Real departures the same operator runs on this route, with live seat counts.
+  useEffect(() => {
+    let active = true
 
-  const newArrivalTime = selectedTime ? addDuration(selectedTime, estimateDuration()) : ""
+    const load = async () => {
+      const [published, sold] = await Promise.all([
+        searchSchedules(booking.route.from, booking.route.to),
+        getSeatsTakenOn(booking.travelDate),
+      ])
 
-  const handleConfirmTime = () => {
-    if (!selectedTime) return
-    setStep("payment")
-  }
+      if (!active) return
+
+      const candidates = published.schedules
+        .filter(
+          (schedule) =>
+            schedule.id !== booking.busId && schedule.companyName === booking.busCompany,
+        )
+        .map<Option>((schedule) => {
+          const taken = sold.seatsByBus[schedule.id!] ?? []
+          const missing = seats.filter((seat) => !seatExists(seat, schedule.totalSeats))
+          const clash = seats.filter((seat) => taken.includes(seat))
+
+          return {
+            schedule,
+            arrivalTime: toTime(toMinutes(schedule.departureTime) + schedule.durationMinutes),
+            seatsFree: missing.length === 0 && clash.length === 0,
+            fareDifference: Math.max(0, (schedule.price - paidPerSeat) * seats.length),
+            blockedReason:
+              missing.length > 0
+                ? `Seat ${missing.join(", ")} does not exist on this bus`
+                : clash.length > 0
+                ? `Seat ${clash.join(", ")} already taken`
+                : undefined,
+          }
+        })
+
+      setOptions(candidates)
+      setLoading(false)
+    }
+
+    load()
+
+    return () => {
+      active = false
+    }
+  }, [booking.route.from, booking.route.to, booking.travelDate, booking.busId, booking.busCompany, seats, paidPerSeat])
+
+  const selected = options.find((option) => option.schedule.id === selectedId)
+  const totalDue = RESCHEDULE_FEE + (selected?.fareDifference ?? 0)
 
   const handlePayment = async () => {
-    if (!booking.id) return
+    if (!booking.id || !selected) return
+
     setIsProcessing(true)
     setError("")
-    // Simulate payment processing
+
+    // Simulated settlement, as in the main booking flow.
     await new Promise((r) => setTimeout(r, 2000))
-    const result = await rescheduleBooking(booking.id, selectedTime, newArrivalTime, RESCHEDULE_FEE)
+
+    const result = await rescheduleBooking(
+      booking.id,
+      {
+        busId: selected.schedule.id!,
+        departureTime: selected.schedule.departureTime,
+        arrivalTime: selected.arrivalTime,
+        totalSeats: selected.schedule.totalSeats,
+        companyName: selected.schedule.companyName,
+      },
+      RESCHEDULE_FEE,
+    )
+
     setIsProcessing(false)
+
     if (!result.success) {
       setError(result.error || "Failed to reschedule. Please try again.")
+      setStep("select")
       return
     }
+
     setStep("done")
     setTimeout(() => {
       onSuccess({
         ...booking,
-        route: { ...booking.route, departureTime: selectedTime, arrivalTime: newArrivalTime },
+        busId: selected.schedule.id!,
+        route: {
+          ...booking.route,
+          departureTime: selected.schedule.departureTime,
+          arrivalTime: selected.arrivalTime,
+        },
         rescheduleFee: RESCHEDULE_FEE,
       })
     }, 1500)
@@ -97,7 +155,11 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
           </div>
           <h2 className="text-2xl font-bold mb-2">Rescheduled!</h2>
           <p className="text-muted-foreground">
-            Your ticket has been updated to <span className="font-semibold text-foreground">{selectedTime}</span>.
+            Your ticket has been moved to{" "}
+            <span className="font-semibold text-foreground">
+              {selected?.schedule.departureTime}
+            </span>
+            .
           </p>
         </div>
       </div>
@@ -112,7 +174,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
           <div>
             <h2 className="text-xl font-bold">Reschedule Ticket</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {booking.route.from} → {booking.route.to}
+              {booking.route.from} → {booking.route.to} • {booking.travelDate}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} disabled={isProcessing}>
@@ -123,70 +185,130 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
         <div className="p-6 overflow-y-auto flex-1">
           {step === "select" && (
             <>
-              {/* Current time info */}
               <div className="bg-secondary/50 rounded-xl p-4 mb-5 flex items-center gap-3">
                 <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div className="text-sm">
                   <span className="text-muted-foreground">Current departure: </span>
                   <span className="font-semibold">{booking.route.departureTime}</span>
+                  <span className="text-muted-foreground"> • Seats {seats.join(", ")}</span>
                 </div>
               </div>
 
-              {/* Reschedule fee notice */}
               <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-5 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-primary">
-                  A reschedule fee of <span className="font-bold">{RESCHEDULE_FEE.toLocaleString()} RWF</span> will be charged.
+                  A reschedule fee of{" "}
+                  <span className="font-bold">{RESCHEDULE_FEE.toLocaleString()} RWF</span> applies.
+                  You keep your seat numbers, so they must be free on the new departure.
                 </p>
               </div>
 
-              {/* Time slot picker */}
-              <Label className="text-base font-medium mb-3 block">Select new departure time</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {availableSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    onClick={() => setSelectedTime(slot)}
-                    className={`py-2 px-1 rounded-lg text-sm font-medium border transition-colors ${
-                      selectedTime === slot
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border hover:border-primary/50 hover:bg-secondary"
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mb-4 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
 
-              {selectedTime && (
-                <div className="mt-4 text-sm text-muted-foreground text-center">
-                  New arrival: <span className="font-semibold text-foreground">{newArrivalTime}</span>
+              <Label className="text-base font-medium mb-3 block">Other departures that day</Label>
+
+              {loading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  Loading departures...
+                </div>
+              ) : options.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">
+                  {booking.busCompany} has no other departure published on this route. Rescheduling
+                  is only possible onto another of their trips.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {options.map((option) => {
+                    const id = option.schedule.id!
+                    const isSelected = selectedId === id
+
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => option.seatsFree && setSelectedId(id)}
+                        disabled={!option.seatsFree}
+                        className={`w-full text-left p-4 rounded-xl border transition-colors ${
+                          !option.seatsFree
+                            ? "border-border opacity-60 cursor-not-allowed"
+                            : isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold">
+                              {option.schedule.departureTime} → {option.arrivalTime}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {option.schedule.busType} • {option.schedule.busPlate}
+                            </div>
+                          </div>
+                          <div className="text-right text-sm">
+                            {option.blockedReason ? (
+                              <span className="text-destructive">{option.blockedReason}</span>
+                            ) : option.fareDifference > 0 ? (
+                              <span className="text-primary font-medium">
+                                +{option.fareDifference.toLocaleString()} RWF
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">No fare change</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </>
           )}
 
-          {step === "payment" && (
+          {step === "payment" && selected && (
             <>
-              {/* Summary */}
               <div className="bg-secondary/50 rounded-xl p-4 mb-6">
                 <h3 className="font-medium mb-3">Reschedule Summary</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Route</span>
-                    <span>{booking.route.from} → {booking.route.to}</span>
+                    <span>
+                      {booking.route.from} → {booking.route.to}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Old departure</span>
-                    <span className="line-through text-muted-foreground">{booking.route.departureTime}</span>
+                    <span className="line-through text-muted-foreground">
+                      {booking.route.departureTime}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">New departure</span>
-                    <span className="font-semibold text-primary">{selectedTime}</span>
+                    <span className="font-semibold text-primary">
+                      {selected.schedule.departureTime}
+                    </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Seats</span>
+                    <span>{seats.join(", ")}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Reschedule fee</span>
+                    <span>{RESCHEDULE_FEE.toLocaleString()} RWF</span>
+                  </div>
+                  {selected.fareDifference > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fare difference</span>
+                      <span>{selected.fareDifference.toLocaleString()} RWF</span>
+                    </div>
+                  )}
                   <div className="flex justify-between pt-2 border-t border-border font-medium">
-                    <span>Reschedule Fee</span>
-                    <span className="text-primary">{RESCHEDULE_FEE.toLocaleString()} RWF</span>
+                    <span>Total due</span>
+                    <span className="text-primary">{totalDue.toLocaleString()} RWF</span>
                   </div>
                 </div>
               </div>
@@ -197,67 +319,57 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                 </div>
               )}
 
-              {/* Payment method */}
-              <Label className="text-base font-medium mb-3 block">Payment Method</Label>
+              <Label className="text-base font-medium">Payment Method</Label>
               <RadioGroup
                 value={paymentMethod}
                 onValueChange={(v) => setPaymentMethod(v as "mtn" | "airtel" | "card")}
-                className="space-y-3"
+                className="space-y-3 mt-3"
               >
                 <label
-                  htmlFor="r-mtn"
+                  htmlFor="rs-mtn"
                   className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${
-                    paymentMethod === "mtn" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"
+                    paymentMethod === "mtn" ? "border-primary bg-primary/5" : "border-border"
                   }`}
                 >
-                  <RadioGroupItem value="mtn" id="r-mtn" />
+                  <RadioGroupItem value="mtn" id="rs-mtn" />
                   <div className="h-10 w-10 rounded-lg bg-[#FFCC00] flex items-center justify-center">
                     <Smartphone className="h-5 w-5 text-black" />
                   </div>
-                  <div>
-                    <div className="font-medium">MTN Mobile Money</div>
-                    <div className="text-sm text-muted-foreground">Pay with MTN MoMo</div>
-                  </div>
+                  <div className="font-medium">MTN Mobile Money</div>
                 </label>
 
                 <label
-                  htmlFor="r-airtel"
+                  htmlFor="rs-airtel"
                   className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${
-                    paymentMethod === "airtel" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"
+                    paymentMethod === "airtel" ? "border-primary bg-primary/5" : "border-border"
                   }`}
                 >
-                  <RadioGroupItem value="airtel" id="r-airtel" />
+                  <RadioGroupItem value="airtel" id="rs-airtel" />
                   <div className="h-10 w-10 rounded-lg bg-[#E40000] flex items-center justify-center">
                     <Smartphone className="h-5 w-5 text-white" />
                   </div>
-                  <div>
-                    <div className="font-medium">Airtel Money</div>
-                    <div className="text-sm text-muted-foreground">Pay with Airtel Money</div>
-                  </div>
+                  <div className="font-medium">Airtel Money</div>
                 </label>
 
                 <label
-                  htmlFor="r-card"
+                  htmlFor="rs-card"
                   className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${
-                    paymentMethod === "card" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"
+                    paymentMethod === "card" ? "border-primary bg-primary/5" : "border-border"
                   }`}
                 >
-                  <RadioGroupItem value="card" id="r-card" />
+                  <RadioGroupItem value="card" id="rs-card" />
                   <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
                     <CreditCard className="h-5 w-5" />
                   </div>
-                  <div>
-                    <div className="font-medium">Debit/Credit Card</div>
-                    <div className="text-sm text-muted-foreground">Visa, Mastercard</div>
-                  </div>
+                  <div className="font-medium">Debit/Credit Card</div>
                 </label>
               </RadioGroup>
 
               {(paymentMethod === "mtn" || paymentMethod === "airtel") && (
                 <div className="space-y-2 mt-4">
-                  <Label htmlFor="r-phone">Phone Number</Label>
+                  <Label htmlFor="rs-phone">Phone Number</Label>
                   <Input
-                    id="r-phone"
+                    id="rs-phone"
                     type="tel"
                     placeholder="07X XXX XXXX"
                     value={phoneNumber}
@@ -271,33 +383,44 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-border space-y-3">
-          {step === "select" && (
-            <Button onClick={handleConfirmTime} className="w-full" size="lg" disabled={!selectedTime}>
-              Continue — Pay {RESCHEDULE_FEE.toLocaleString()} RWF
+        <div className="p-6 border-t border-border">
+          {step === "select" ? (
+            <Button
+              onClick={() => setStep("payment")}
+              className="w-full"
+              size="lg"
+              disabled={!selected}
+            >
+              Continue
             </Button>
-          )}
-          {step === "payment" && (
-            <>
+          ) : (
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep("select")}
+                className="flex-1"
+                disabled={isProcessing}
+              >
+                Back
+              </Button>
               <Button
                 onClick={handlePayment}
-                className="w-full"
-                size="lg"
-                disabled={isProcessing || ((paymentMethod === "mtn" || paymentMethod === "airtel") && !phoneNumber)}
+                className="flex-1 gap-2"
+                disabled={
+                  isProcessing ||
+                  ((paymentMethod === "mtn" || paymentMethod === "airtel") && !phoneNumber)
+                }
               >
                 {isProcessing ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Processing...
                   </>
                 ) : (
-                  `Pay ${RESCHEDULE_FEE.toLocaleString()} RWF`
+                  `Pay ${totalDue.toLocaleString()} RWF`
                 )}
               </Button>
-              <Button variant="ghost" className="w-full" onClick={() => setStep("select")} disabled={isProcessing}>
-                Back
-              </Button>
-            </>
+            </div>
           )}
         </div>
       </div>

@@ -273,21 +273,90 @@ export const updateBookingStatus = async (bookingId: string, status: Booking['bo
   }
 }
 
-// Reschedule booking to a new time slot
+/**
+ * Does a seat id exist on a bus of this capacity?
+ *
+ * Seats are laid out four to a row (A-D) and the last row is trimmed, so "12D"
+ * is a real seat on a 48-seat bus but not on a 45-seat one.
+ */
+export function seatExists(seatId: string, totalSeats: number) {
+  const match = /^(\d+)([A-D])$/.exec(seatId)
+  if (!match) return false
+
+  const row = Number(match[1])
+  const index = (row - 1) * 4 + 'ABCD'.indexOf(match[2])
+  return index >= 0 && index < totalSeats
+}
+
+/**
+ * Move a booking onto a different published departure.
+ *
+ * The passenger keeps their seat numbers, so those seats must exist on the new
+ * bus and still be free on the same travel date. The first departure the ticket
+ * was sold for is preserved, so rescheduling twice does not lose the original.
+ */
 export const rescheduleBooking = async (
   bookingId: string,
-  newDepartureTime: string,
-  newArrivalTime: string,
-  rescheduleFee: number
+  target: {
+    busId: string
+    departureTime: string
+    arrivalTime: string
+    totalSeats: number
+    companyName: string
+  },
+  rescheduleFee: number,
 ) => {
   try {
     const bookingRef = doc(db, 'bookings', bookingId)
+    const snapshot = await getDoc(bookingRef)
+
+    if (!snapshot.exists()) {
+      return { success: false, error: 'This booking no longer exists.' }
+    }
+
+    const booking = snapshot.data() as Booking
+
+    if (booking.bookingStatus !== 'confirmed') {
+      return {
+        success: false,
+        error:
+          booking.bookingStatus === 'used'
+            ? 'This ticket has already been used.'
+            : 'This booking was cancelled.',
+      }
+    }
+
+    const seats = booking.seats ?? []
+
+    const missing = seats.filter((seat) => !seatExists(seat, target.totalSeats))
+    if (missing.length > 0) {
+      return {
+        success: false,
+        error: `Seat ${missing.join(', ')} does not exist on that bus. Please choose another departure.`,
+      }
+    }
+
+    const taken = await getTakenSeats(target.busId, booking.travelDate)
+    const clash = seats.filter((seat) => taken.seats.includes(seat))
+    if (clash.length > 0) {
+      return {
+        success: false,
+        error: `Seat ${clash.join(', ')} is already taken on that departure.`,
+      }
+    }
+
     await updateDoc(bookingRef, {
-      'route.departureTime': newDepartureTime,
-      'route.arrivalTime': newArrivalTime,
+      busId: target.busId,
+      busCompany: target.companyName,
+      'route.departureTime': target.departureTime,
+      'route.arrivalTime': target.arrivalTime,
+      // Keep the very first departure, not the previous one.
+      originalDepartureTime: booking.originalDepartureTime ?? booking.route.departureTime,
+      originalArrivalTime: booking.originalArrivalTime ?? booking.route.arrivalTime,
       rescheduleFee,
       rescheduledAt: Timestamp.now(),
     })
+
     return { success: true }
   } catch (error) {
     return { success: false, error: (error as Error).message }
