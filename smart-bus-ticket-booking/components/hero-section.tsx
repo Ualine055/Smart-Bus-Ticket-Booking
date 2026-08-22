@@ -1,25 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Calendar, ArrowRight, Search, Users } from "lucide-react"
 import { useLanguage } from "@/contexts/LanguageContext"
+import { getNetworkStats } from "@/lib/schedules"
 
 interface HeroSectionProps {
   onSearch: (from: string, to: string, date: string, passengers: number) => void
 }
+
+type NetworkStats = { departures: number; routes: number; operators: number; cities: number }
 
 export function HeroSection({ onSearch }: HeroSectionProps) {
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [date, setDate] = useState("")
   const [passengers, setPassengers] = useState(1)
+  const [stats, setStats] = useState<NetworkStats | null>(null)
   const { t } = useLanguage()
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0]
+  // Real network size, so the headline figures cannot drift from the system.
+  useEffect(() => {
+    let active = true
+    getNetworkStats().then((result) => {
+      if (active) setStats(result.stats)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Local calendar date. toISOString() is UTC, which is two hours behind
+  // Rwanda, so late in the evening it would offer yesterday as a valid date.
+  const now = new Date()
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-")
 
   const handleSearch = () => {
     if (date && date < today) {
@@ -131,17 +152,19 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats - counted from published schedules, not invented */}
         <div className="max-w-4xl mx-auto mt-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { value: "500K+", label: t.happyPassengers },
-              { value: "100+", label: t.routesAvailable },
-              { value: "24/7", label: t.support },
-              { value: "98%", label: t.onTime },
+              { value: stats?.departures, label: t.dailyDepartures },
+              { value: stats?.routes, label: t.routesAvailable },
+              { value: stats?.operators, label: t.busOperators },
+              { value: stats?.cities, label: t.citiesServed },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-primary">{stat.value}</div>
+                <div className="text-2xl md:text-3xl font-bold text-primary">
+                  {stat.value ?? "—"}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
               </div>
             ))}

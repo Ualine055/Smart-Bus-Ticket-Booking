@@ -150,6 +150,39 @@ export const searchSchedules = async (from: string, to: string) => {
   }
 }
 
+/**
+ * Headline figures for the home page, counted from published schedules.
+ *
+ * Only the schedules collection is publicly readable - bookings and companies
+ * require sign-in - so every figure here is derived from it. That keeps the
+ * numbers real without loosening any security rule.
+ */
+export const getNetworkStats = async () => {
+  const result = await getAllSchedules()
+  const active = result.schedules.filter((schedule) => schedule.active)
+
+  const routes = new Set<string>()
+  const operators = new Set<string>()
+  const cities = new Set<string>()
+
+  for (const schedule of active) {
+    routes.add(`${schedule.from.toLowerCase()}|${schedule.to.toLowerCase()}`)
+    operators.add(schedule.companyName)
+    cities.add(schedule.from.toLowerCase())
+    cities.add(schedule.to.toLowerCase())
+  }
+
+  return {
+    success: result.success,
+    stats: {
+      departures: active.length,
+      routes: routes.size,
+      operators: operators.size,
+      cities: cities.size,
+    },
+  }
+}
+
 /** Distinct routes currently offered, for the passenger-facing routes list. */
 export const getActiveRoutes = async () => {
   const result = await getAllSchedules()

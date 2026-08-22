@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { X, Clock, Smartphone, CreditCard, Loader2, Check, AlertCircle } from "lucide-react"
 import { rescheduleBooking, getSeatsTakenOn, seatExists, type Booking } from "@/lib/bookings"
 import { searchSchedules, type Schedule } from "@/lib/schedules"
+import { useLanguage, format } from "@/contexts/LanguageContext"
 
 const RESCHEDULE_FEE = 500 // RWF
 
@@ -40,6 +41,7 @@ function toTime(totalMinutes: number) {
 }
 
 export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModalProps) {
+  const { t } = useLanguage()
   const [step, setStep] = useState<Step>("select")
   const [options, setOptions] = useState<Option[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,9 +83,9 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
             fareDifference: Math.max(0, (schedule.price - paidPerSeat) * seats.length),
             blockedReason:
               missing.length > 0
-                ? `Seat ${missing.join(", ")} does not exist on this bus`
+                ? format(t.seatMissingOnBus, { seats: missing.join(", ") })
                 : clash.length > 0
-                ? `Seat ${clash.join(", ")} already taken`
+                ? format(t.seatTakenOnDeparture, { seats: clash.join(", ") })
                 : undefined,
           }
         })
@@ -97,7 +99,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
     return () => {
       active = false
     }
-  }, [booking.route.from, booking.route.to, booking.travelDate, booking.busId, booking.busCompany, seats, paidPerSeat])
+  }, [booking.route.from, booking.route.to, booking.travelDate, booking.busId, booking.busCompany, seats, paidPerSeat, t.seatMissingOnBus, t.seatTakenOnDeparture])
 
   const selected = options.find((option) => option.schedule.id === selectedId)
   const totalDue = RESCHEDULE_FEE + (selected?.fareDifference ?? 0)
@@ -126,7 +128,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
     setIsProcessing(false)
 
     if (!result.success) {
-      setError(result.error || "Failed to reschedule. Please try again.")
+      setError(result.error || t.rescheduleFailed)
       setStep("select")
       return
     }
@@ -153,13 +155,9 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
           <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
             <Check className="h-10 w-10 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Rescheduled!</h2>
+          <h2 className="text-2xl font-bold mb-2">{t.rescheduledTitle}</h2>
           <p className="text-muted-foreground">
-            Your ticket has been moved to{" "}
-            <span className="font-semibold text-foreground">
-              {selected?.schedule.departureTime}
-            </span>
-            .
+            {format(t.rescheduledBody, { time: selected?.schedule.departureTime ?? "" })}
           </p>
         </div>
       </div>
@@ -172,7 +170,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div>
-            <h2 className="text-xl font-bold">Reschedule Ticket</h2>
+            <h2 className="text-xl font-bold">{t.rescheduleTicket}</h2>
             <p className="text-sm text-muted-foreground mt-1">
               {booking.route.from} → {booking.route.to} • {booking.travelDate}
             </p>
@@ -188,18 +186,16 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
               <div className="bg-secondary/50 rounded-xl p-4 mb-5 flex items-center gap-3">
                 <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Current departure: </span>
+                  <span className="text-muted-foreground">{t.currentDeparture}: </span>
                   <span className="font-semibold">{booking.route.departureTime}</span>
-                  <span className="text-muted-foreground"> • Seats {seats.join(", ")}</span>
+                  <span className="text-muted-foreground"> • {t.seatsLabel} {seats.join(", ")}</span>
                 </div>
               </div>
 
               <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-5 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-primary">
-                  A reschedule fee of{" "}
-                  <span className="font-bold">{RESCHEDULE_FEE.toLocaleString()} RWF</span> applies.
-                  You keep your seat numbers, so they must be free on the new departure.
+                  {format(t.rescheduleFeeNote, { fee: RESCHEDULE_FEE.toLocaleString() })}
                 </p>
               </div>
 
@@ -209,17 +205,16 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                 </div>
               )}
 
-              <Label className="text-base font-medium mb-3 block">Other departures that day</Label>
+              <Label className="text-base font-medium mb-3 block">{t.otherDepartures}</Label>
 
               {loading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  Loading departures...
+                  {t.loadingDepartures}
                 </div>
               ) : options.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4">
-                  {booking.busCompany} has no other departure published on this route. Rescheduling
-                  is only possible onto another of their trips.
+                  {format(t.noOtherDepartures, { company: booking.busCompany })}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -257,7 +252,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                                 +{option.fareDifference.toLocaleString()} RWF
                               </span>
                             ) : (
-                              <span className="text-muted-foreground">No fare change</span>
+                              <span className="text-muted-foreground">{t.noFareChange}</span>
                             )}
                           </div>
                         </div>
@@ -272,42 +267,42 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
           {step === "payment" && selected && (
             <>
               <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-                <h3 className="font-medium mb-3">Reschedule Summary</h3>
+                <h3 className="font-medium mb-3">{t.rescheduleSummary}</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Route</span>
+                    <span className="text-muted-foreground">{t.routeLabel}</span>
                     <span>
                       {booking.route.from} → {booking.route.to}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Old departure</span>
+                    <span className="text-muted-foreground">{t.oldDeparture}</span>
                     <span className="line-through text-muted-foreground">
                       {booking.route.departureTime}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">New departure</span>
+                    <span className="text-muted-foreground">{t.newDeparture}</span>
                     <span className="font-semibold text-primary">
                       {selected.schedule.departureTime}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seats</span>
+                    <span className="text-muted-foreground">{t.seatsLabel}</span>
                     <span>{seats.join(", ")}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Reschedule fee</span>
+                    <span className="text-muted-foreground">{t.rescheduleFeeLabel}</span>
                     <span>{RESCHEDULE_FEE.toLocaleString()} RWF</span>
                   </div>
                   {selected.fareDifference > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fare difference</span>
+                      <span className="text-muted-foreground">{t.fareDifference}</span>
                       <span>{selected.fareDifference.toLocaleString()} RWF</span>
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t border-border font-medium">
-                    <span>Total due</span>
+                    <span>{t.totalDue}</span>
                     <span className="text-primary">{totalDue.toLocaleString()} RWF</span>
                   </div>
                 </div>
@@ -319,7 +314,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                 </div>
               )}
 
-              <Label className="text-base font-medium">Payment Method</Label>
+              <Label className="text-base font-medium">{t.paymentMethodLabel}</Label>
               <RadioGroup
                 value={paymentMethod}
                 onValueChange={(v) => setPaymentMethod(v as "mtn" | "airtel" | "card")}
@@ -335,7 +330,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                   <div className="h-10 w-10 rounded-lg bg-[#FFCC00] flex items-center justify-center">
                     <Smartphone className="h-5 w-5 text-black" />
                   </div>
-                  <div className="font-medium">MTN Mobile Money</div>
+                  <div className="font-medium">{t.mtnMoMo}</div>
                 </label>
 
                 <label
@@ -348,7 +343,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                   <div className="h-10 w-10 rounded-lg bg-[#E40000] flex items-center justify-center">
                     <Smartphone className="h-5 w-5 text-white" />
                   </div>
-                  <div className="font-medium">Airtel Money</div>
+                  <div className="font-medium">{t.airtelMoney}</div>
                 </label>
 
                 <label
@@ -361,13 +356,13 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                   <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
                     <CreditCard className="h-5 w-5" />
                   </div>
-                  <div className="font-medium">Debit/Credit Card</div>
+                  <div className="font-medium">{t.cardPayment}</div>
                 </label>
               </RadioGroup>
 
               {(paymentMethod === "mtn" || paymentMethod === "airtel") && (
                 <div className="space-y-2 mt-4">
-                  <Label htmlFor="rs-phone">Phone Number</Label>
+                  <Label htmlFor="rs-phone">{t.phoneLabel}</Label>
                   <Input
                     id="rs-phone"
                     type="tel"
@@ -391,7 +386,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
               size="lg"
               disabled={!selected}
             >
-              Continue
+              {t.continueBtn}
             </Button>
           ) : (
             <div className="flex gap-3">
@@ -401,7 +396,7 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                 className="flex-1"
                 disabled={isProcessing}
               >
-                Back
+                {t.back}
               </Button>
               <Button
                 onClick={handlePayment}
@@ -414,10 +409,10 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
                 {isProcessing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Processing...
+                    {t.processing}
                   </>
                 ) : (
-                  `Pay ${totalDue.toLocaleString()} RWF`
+                  format(t.payAmount, { amount: totalDue.toLocaleString() })
                 )}
               </Button>
             </div>
