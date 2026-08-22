@@ -66,6 +66,13 @@ These read and write real Firestore data.
 - Password reset by real Firebase email
 - Profile editing, restricted to name and phone
 
+### Languages
+- English, Kinyarwanda, and French across the whole passenger journey
+- Sentences containing numbers are translated whole and filled in, so word
+  order stays natural in each language
+- A missing translation key fails the TypeScript build rather than silently
+  falling back to English
+
 ---
 
 ## Simulated
@@ -85,9 +92,11 @@ The method chosen *is* recorded correctly on the booking.
   with a phone camera and read the reference into the validator. A built-in
   scanner needs a camera library and HTTPS.
 - **Booking cancellation and refunds.** Rescheduling works; cancelling does not.
-- **Full translation.** Kinyarwanda and French cover the header, footer, hero,
-  and features sections. The booking flow, seat map, payment, tickets, and both
-  dashboards are English only.
+- **Dashboard translation.** The whole passenger journey - search, seat
+  selection, payment, ticket, and ticket lookup - is available in English,
+  Kinyarwanda, and French. The operator and administrator dashboards are
+  English only, on the grounds that they are staff tools rather than
+  passenger-facing screens.
 
 ---
 
