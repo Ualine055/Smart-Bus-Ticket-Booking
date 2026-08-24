@@ -35,16 +35,23 @@ interface PaymentModalProps {
   bus: Bus
   selectedSeats: string[]
   onClose: () => void
-  /** Receives who is travelling and how they paid, since there is no account to read it from. */
-  onSuccess: (details: PassengerDetails) => void
+  /**
+   * Writes the booking. Awaited before the success screen appears, so a seat
+   * taken during checkout is reported as a failure rather than hidden behind a
+   * confirmation the passenger has no ticket to match.
+   */
+  onConfirm: (details: PassengerDetails) => Promise<{ success: boolean; error?: string }>
+  /** Called once the passenger has seen the confirmation. */
+  onDone: () => void
 }
 
-export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: PaymentModalProps) {
+export function PaymentModal({ bus, selectedSeats, onClose, onConfirm, onDone }: PaymentModalProps) {
   const { t } = useLanguage()
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mtn")
   const [passengerName, setPassengerName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [errors, setErrors] = useState<{ name?: string; phone?: string }>({})
+  const [failure, setFailure] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
 
@@ -64,21 +71,29 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
     setErrors(found)
     if (Object.keys(found).length > 0) return
 
+    setFailure("")
     setIsProcessing(true)
     // Simulated settlement. Real MTN MoMo / Airtel Money collection requires
     // merchant API credentials and a server-side callback, which this academic
     // build does not have; the chosen method is still recorded on the booking.
     await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // The booking is written before anything is confirmed to the passenger.
+    const result = await onConfirm({
+      name: passengerName.trim(),
+      phone: phoneNumber.trim(),
+      paymentMethod,
+    })
+
     setIsProcessing(false)
+
+    if (!result.success) {
+      setFailure(result.error ?? t.bookingFailed)
+      return
+    }
+
     setIsComplete(true)
-    // Wait a moment to show success state
-    setTimeout(() => {
-      onSuccess({
-        name: passengerName.trim(),
-        phone: phoneNumber.trim(),
-        paymentMethod,
-      })
-    }, 1500)
+    setTimeout(onDone, 1500)
   }
 
   if (isComplete) {
@@ -245,6 +260,11 @@ export function PaymentModal({ bus, selectedSeats, onClose, onSuccess }: Payment
 
         {/* Footer */}
         <div className="p-6 border-t border-border">
+          {failure && (
+            <div className="p-3 mb-4 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm text-destructive">{failure}</p>
+            </div>
+          )}
           <Button
             onClick={handlePayment}
             className="w-full"

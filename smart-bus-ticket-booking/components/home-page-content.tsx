@@ -87,6 +87,24 @@ function todayIso() {
   ].join("-")
 }
 
+/** Minutes of notice a passenger needs before a departure to still board it. */
+const BOARDING_CUTOFF_MINUTES = 15
+
+/**
+ * Drop departures that have already left, or are about to.
+ *
+ * Schedules repeat daily, so a 06:00 trip is a valid result for tomorrow but
+ * not for this afternoon. Only today is filtered; future dates keep every run.
+ */
+function stillBookable(buses: Bus[], travelDate: string) {
+  if (travelDate !== todayIso()) return buses
+
+  const now = new Date()
+  const cutoff = now.getHours() * 60 + now.getMinutes() + BOARDING_CUTOFF_MINUTES
+
+  return buses.filter((bus) => toMinutes(bus.departureTime) > cutoff)
+}
+
 export type HomePageContentProps = {
   autoOpenMyTickets?: boolean
   /** Jump to the search form on load, for /search deep links. */
@@ -108,6 +126,7 @@ export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageC
     passengerName: string
   } | null>(null)
   const [bookingError, setBookingError] = useState("")
+  const [allDeparted, setAllDeparted] = useState(false)
   const [searchParams, setSearchParams] = useState({
     from: "",
     to: "",
@@ -140,8 +159,14 @@ export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageC
       getSeatsTakenOn(date || todayIso()),
     ])
 
+    const onRoute = toBuses(published.schedules)
+    const bookable = stillBookable(onRoute, date || todayIso())
+
+    // Distinguish "nothing runs here" from "today's buses have all gone".
+    setAllDeparted(onRoute.length > 0 && bookable.length === 0)
+
     setSearchResults(
-      toBuses(published.schedules).map((bus) => {
+      bookable.map((bus) => {
         const taken = sold.seatsByBus[bus.id]?.length ?? 0
         return { ...bus, availableSeats: Math.max(bus.totalSeats - taken, 0) }
       }),
@@ -162,8 +187,9 @@ export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageC
     setViewState("payment")
   }
 
-  const handlePaymentSuccess = async (details: PassengerDetails) => {
-    if (!selectedBus) return
+  /** Writes the booking. Returns the outcome so payment can report a failure. */
+  const handleConfirmBooking = async (details: PassengerDetails) => {
+    if (!selectedBus) return { success: false, error: t.bookingFailed }
 
     const ticketId = generateTicketId()
     const pin = generateTicketPin()
@@ -194,14 +220,12 @@ export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageC
 
     // Someone else may have taken the seat while this passenger was paying.
     if (!result.success) {
-      setBookingError(result.error ?? "Your booking could not be saved.")
-      setSelectedSeats([])
-      setViewState("seats")
-      return
+      setBookingError(result.error ?? t.bookingFailed)
+      return { success: false, error: result.error ?? t.bookingFailed }
     }
 
     setIssuedTicket({ ticketId, pin, passengerName: details.name })
-    setViewState("ticket")
+    return { success: true }
   }
 
   const handleCloseModal = () => {
@@ -310,12 +334,16 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
         {viewState !== "search" && !searching && searchResults.length === 0 && (
           <section id="bus-results" className="py-12">
             <div className="container mx-auto px-4 text-center max-w-md">
-              <h2 className="text-xl font-bold mb-2">{t.noBusesTitle}</h2>
+              <h2 className="text-xl font-bold mb-2">
+                {allDeparted ? t.allDepartedTitle : t.noBusesTitle}
+              </h2>
               <p className="text-muted-foreground text-sm">
-                {format(t.noBusesBody, {
-                  from: searchParams.from || t.anywhere,
-                  to: searchParams.to || t.anywhere,
-                })}
+                {allDeparted
+                  ? t.allDepartedBody
+                  : format(t.noBusesBody, {
+                      from: searchParams.from || t.anywhere,
+                      to: searchParams.to || t.anywhere,
+                    })}
               </p>
             </div>
           </section>
@@ -344,7 +372,8 @@ Total Paid: ${(selectedSeats.length * selectedBus.price).toLocaleString()} RWF
           bus={selectedBus}
           selectedSeats={selectedSeats}
           onClose={handleCloseModal}
-          onSuccess={handlePaymentSuccess}
+          onConfirm={handleConfirmBooking}
+          onDone={() => setViewState("ticket")}
         />
       )}
 

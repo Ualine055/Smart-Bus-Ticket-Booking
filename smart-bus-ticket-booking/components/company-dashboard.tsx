@@ -397,7 +397,9 @@ export function CompanyDashboard() {
         )}
       </div>
 
-      {showValidator && <TicketValidator onClose={() => setShowValidator(false)} />}
+      {showValidator && (
+        <TicketValidator companyName={companyName} onClose={() => setShowValidator(false)} />
+      )}
 
       {showScheduleModal && companyId && companyName && (
         <ScheduleModal

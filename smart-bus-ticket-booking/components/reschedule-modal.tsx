@@ -66,10 +66,23 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
 
       if (!active) return
 
+      // On the day of travel, a departure that has already left is not an option.
+      const now = new Date()
+      const isToday =
+        booking.travelDate ===
+        [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, "0"),
+          String(now.getDate()).padStart(2, "0"),
+        ].join("-")
+      const cutoff = now.getHours() * 60 + now.getMinutes() + 15
+
       const candidates = published.schedules
         .filter(
           (schedule) =>
-            schedule.id !== booking.busId && schedule.companyName === booking.busCompany,
+            schedule.id !== booking.busId &&
+            schedule.companyName === booking.busCompany &&
+            (!isToday || toMinutes(schedule.departureTime) > cutoff),
         )
         .map<Option>((schedule) => {
           const taken = sold.seatsByBus[schedule.id!] ?? []

@@ -12,6 +12,12 @@ import { getBookingByTicketId, markBookingAsBoarded, type Booking } from "@/lib/
 import { useAuth } from "@/contexts/AuthContext"
 
 interface TicketValidatorProps {
+  /**
+   * The operator running this gate. A ticket sold by anyone else is refused,
+   * so one company cannot inspect or board another company's passengers.
+   * Admins pass nothing and may check any ticket.
+   */
+  companyName?: string | null
   onClose: () => void
 }
 
@@ -23,7 +29,7 @@ type LookupState =
   | { status: "found"; booking: Booking }
 
 /** Why a ticket may or may not admit its holder, in priority order. */
-type Verdict = "cancelled" | "unpaid" | "alreadyUsed" | "wrongDay" | "valid"
+type Verdict = "otherOperator" | "cancelled" | "unpaid" | "alreadyUsed" | "wrongDay" | "valid"
 
 /** Local calendar date as YYYY-MM-DD. Avoids toISOString(), which is UTC and
  *  would roll over a day early for Rwanda (UTC+2) late in the evening. */
@@ -46,7 +52,10 @@ function toDate(value: unknown): Date | null {
   return null
 }
 
-function verdictFor(booking: Booking): Verdict {
+function verdictFor(booking: Booking, companyName?: string | null): Verdict {
+  // Checked first: staff should be told it is not their passenger before
+  // being shown anything about the trip.
+  if (companyName && booking.busCompany !== companyName) return "otherOperator"
   if (booking.bookingStatus === "cancelled") return "cancelled"
   if (booking.paymentStatus !== "completed") return "unpaid"
   if (booking.bookingStatus === "used") return "alreadyUsed"
@@ -55,6 +64,11 @@ function verdictFor(booking: Booking): Verdict {
 }
 
 const VERDICTS: Record<Verdict, { tone: "good" | "warn" | "bad"; title: string; detail: string }> = {
+  otherOperator: {
+    tone: "bad",
+    title: "Another operator's ticket",
+    detail: "This ticket was sold by a different bus company. Do not admit.",
+  },
   valid: {
     tone: "good",
     title: "Valid ticket",
@@ -88,7 +102,7 @@ const TONE_STYLES = {
   bad: { ring: "bg-destructive/20", icon: "text-destructive", Icon: XCircle },
 } as const
 
-export function TicketValidator({ onClose }: TicketValidatorProps) {
+export function TicketValidator({ companyName, onClose }: TicketValidatorProps) {
   const { user } = useAuth()
   const [ticketId, setTicketId] = useState("")
   const [lookup, setLookup] = useState<LookupState>({ status: "idle" })
@@ -220,6 +234,7 @@ export function TicketValidator({ onClose }: TicketValidatorProps) {
           ) : (
             <ValidationResult
               booking={lookup.booking}
+              companyName={companyName}
               boarding={boarding}
               boardingError={boardingError}
               onBoard={() => handleBoard(lookup.booking)}
@@ -235,6 +250,7 @@ export function TicketValidator({ onClose }: TicketValidatorProps) {
 
 function ValidationResult({
   booking,
+  companyName,
   boarding,
   boardingError,
   onBoard,
@@ -242,13 +258,14 @@ function ValidationResult({
   onClose,
 }: {
   booking: Booking
+  companyName?: string | null
   boarding: boolean
   boardingError: string
   onBoard: () => void
   onReset: () => void
   onClose: () => void
 }) {
-  const verdict = verdictFor(booking)
+  const verdict = verdictFor(booking, companyName)
   const { tone, title, detail } = VERDICTS[verdict]
   const { ring, icon, Icon } = TONE_STYLES[tone]
   const boardedAt = toDate(booking.boardedAt)

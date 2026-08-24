@@ -70,6 +70,9 @@ const translations = {
     noBusesBody:
       "No operator has published a departure from {from} to {to} yet. Try another route, or leave both fields empty to see every available trip.",
     anywhere: "anywhere",
+    allDepartedTitle: "Today's buses have already left",
+    allDepartedBody:
+      "Every departure on this route has gone for today. Search tomorrow's date to see the next available trips.",
     // Seat selection
     selectYourSeats: "Select Your Seats",
     checkingSeats: "Checking seat availability...",
@@ -117,6 +120,7 @@ const translations = {
     paymentSuccessful: "Payment Successful!",
     ticketConfirmed: "Your ticket has been confirmed. Redirecting to your ticket...",
     paymentSecureNote: "Your payment is secure and encrypted",
+    bookingFailed: "Your booking could not be saved. Please choose your seats again.",
     // Ticket
     digitalBusTicket: "Digital Bus Ticket",
     confirmed: "Confirmed",
@@ -236,6 +240,9 @@ const translations = {
     noBusesBody:
       "Nta sosiyete iratangaza urugendo ruva {from} rujya {to}. Gerageza indi nzira, cyangwa usige imyanya yombi ubusa kugira ngo ubone ingendo zose zihari.",
     anywhere: "ahantu hose",
+    allDepartedTitle: "Bisi z'uyu munsi zamaze kugenda",
+    allDepartedBody:
+      "Ingendo zose zo kuri iyi nzira zamaze kugenda uyu munsi. Shakisha itariki y'ejo kugira ngo ubone ingendo zikurikira.",
     // Seat selection
     selectYourSeats: "Hitamo Intebe Yawe",
     checkingSeats: "Turareba intebe zihari...",
@@ -283,6 +290,7 @@ const translations = {
     paymentSuccessful: "Kwishyura Byagenze Neza!",
     ticketConfirmed: "Tiketi yawe yemejwe. Turakujyana kuri tiketi yawe...",
     paymentSecureNote: "Ubwishyu bwawe buri mu mutekano kandi bufite ubwirinzi",
+    bookingFailed: "Ubwishyu bwawe ntibwabitswe. Ongera uhitemo intebe.",
     // Ticket
     digitalBusTicket: "Tiketi ya Bisi ya Dijitali",
     confirmed: "Byemejwe",
@@ -402,6 +410,9 @@ const translations = {
     noBusesBody:
       "Aucun opérateur n'a encore publié de départ de {from} vers {to}. Essayez un autre itinéraire, ou laissez les deux champs vides pour voir tous les trajets disponibles.",
     anywhere: "partout",
+    allDepartedTitle: "Les bus d'aujourd'hui sont déjà partis",
+    allDepartedBody:
+      "Tous les départs sur cet itinéraire sont partis pour aujourd'hui. Cherchez la date de demain pour voir les prochains trajets.",
     // Seat selection
     selectYourSeats: "Choisissez Vos Sièges",
     checkingSeats: "Vérification des sièges disponibles...",
@@ -450,6 +461,7 @@ const translations = {
     paymentSuccessful: "Paiement Réussi!",
     ticketConfirmed: "Votre billet est confirmé. Redirection vers votre billet...",
     paymentSecureNote: "Votre paiement est sécurisé et chiffré",
+    bookingFailed: "Votre réservation n'a pas pu être enregistrée. Veuillez choisir vos sièges à nouveau.",
     // Ticket
     digitalBusTicket: "Billet de Bus Numérique",
     confirmed: "Confirmé",
