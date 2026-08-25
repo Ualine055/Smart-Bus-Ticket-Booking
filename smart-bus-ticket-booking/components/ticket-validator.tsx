@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { getBookingByTicketId, markBookingAsBoarded, type Booking } from "@/lib/bookings"
 import { useAuth } from "@/contexts/AuthContext"
+import { todayIso, toDate } from "@/lib/dates"
 
 interface TicketValidatorProps {
   /**
@@ -30,27 +31,6 @@ type LookupState =
 
 /** Why a ticket may or may not admit its holder, in priority order. */
 type Verdict = "otherOperator" | "cancelled" | "unpaid" | "alreadyUsed" | "wrongDay" | "valid"
-
-/** Local calendar date as YYYY-MM-DD. Avoids toISOString(), which is UTC and
- *  would roll over a day early for Rwanda (UTC+2) late in the evening. */
-function todayIso() {
-  const now = new Date()
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-")
-}
-
-/** Firestore hands back Timestamps, but a freshly written booking may still hold a Date. */
-function toDate(value: unknown): Date | null {
-  if (!value) return null
-  if (value instanceof Date) return value
-  if (typeof value === "object" && "toDate" in value) {
-    return (value as { toDate: () => Date }).toDate()
-  }
-  return null
-}
 
 function verdictFor(booking: Booking, companyName?: string | null): Verdict {
   // Checked first: staff should be told it is not their passenger before

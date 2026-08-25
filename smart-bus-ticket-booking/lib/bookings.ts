@@ -213,23 +213,6 @@ export const findTicket = async (ticketId: string, pin: string) => {
   }
 }
 
-// Get bookings made while signed in (operator or admin accounts)
-export const getUserBookings = async (userId: string) => {
-  try {
-    const q = query(collection(db, 'bookings'), where('userId', '==', userId))
-    const querySnapshot = await getDocs(q)
-
-    const bookings: Booking[] = []
-    querySnapshot.forEach((doc) => {
-      bookings.push({ id: doc.id, ...doc.data() } as Booking)
-    })
-    
-    return { success: true, bookings }
-  } catch (error) {
-    return { success: false, error: (error as Error).message }
-  }
-}
-
 /** Every booking in the system. Admin-only view; fine at project scale, would need paging in production. */
 export const getAllBookings = async () => {
   try {
@@ -256,18 +239,6 @@ export const getBookingByTicketId = async (ticketId: string) => {
     }
 
     return { success: true, booking: { id: snapshot.id, ...snapshot.data() } as Booking }
-  } catch (error) {
-    return { success: false, error: (error as Error).message }
-  }
-}
-
-// Update booking status
-export const updateBookingStatus = async (bookingId: string, status: Booking['bookingStatus']) => {
-  try {
-    await updateDoc(doc(db, 'bookings', bookingId), {
-      bookingStatus: status,
-    })
-    return { success: true }
   } catch (error) {
     return { success: false, error: (error as Error).message }
   }
@@ -407,14 +378,3 @@ export const markBookingAsBoarded = async (bookingId: string, boardedBy: string)
   }
 }
 
-// Update payment status
-export const updatePaymentStatus = async (bookingId: string, status: Booking['paymentStatus']) => {
-  try {
-    await updateDoc(doc(db, 'bookings', bookingId), {
-      paymentStatus: status,
-    })
-    return { success: true }
-  } catch (error) {
-    return { success: false, error: (error as Error).message }
-  }
-}

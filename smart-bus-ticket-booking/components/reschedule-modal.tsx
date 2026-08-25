@@ -9,6 +9,7 @@ import { X, Clock, Smartphone, CreditCard, Loader2, Check, AlertCircle } from "l
 import { rescheduleBooking, getSeatsTakenOn, seatExists, type Booking } from "@/lib/bookings"
 import { searchSchedules, type Schedule } from "@/lib/schedules"
 import { useLanguage, format } from "@/contexts/LanguageContext"
+import { toMinutes, toTime, hasDeparted } from "@/lib/dates"
 
 const RESCHEDULE_FEE = 500 // RWF
 
@@ -28,16 +29,6 @@ type Option = {
   /** Extra to pay if the new departure costs more per seat than the original. */
   fareDifference: number
   blockedReason?: string
-}
-
-function toMinutes(hhmm: string) {
-  const [h, m] = hhmm.split(":").map(Number)
-  return h * 60 + m
-}
-
-function toTime(totalMinutes: number) {
-  const normalized = ((totalMinutes % 1440) + 1440) % 1440
-  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`
 }
 
 export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModalProps) {
@@ -66,23 +57,13 @@ export function RescheduleModal({ booking, onClose, onSuccess }: RescheduleModal
 
       if (!active) return
 
-      // On the day of travel, a departure that has already left is not an option.
-      const now = new Date()
-      const isToday =
-        booking.travelDate ===
-        [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, "0"),
-          String(now.getDate()).padStart(2, "0"),
-        ].join("-")
-      const cutoff = now.getHours() * 60 + now.getMinutes() + 15
-
       const candidates = published.schedules
         .filter(
           (schedule) =>
             schedule.id !== booking.busId &&
             schedule.companyName === booking.busCompany &&
-            (!isToday || toMinutes(schedule.departureTime) > cutoff),
+            // On the day of travel, a departure that has left is not an option.
+            !hasDeparted(booking.travelDate, schedule.departureTime),
         )
         .map<Option>((schedule) => {
           const taken = sold.seatsByBus[schedule.id!] ?? []

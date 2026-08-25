@@ -12,6 +12,7 @@ import {
   generateTicketPin,
 } from "@/lib/bookings"
 import { searchSchedules, type Schedule } from "@/lib/schedules"
+import { todayIso, toMinutes, toTime, toDurationLabel, hasDeparted } from "@/lib/dates"
 import { HeroSection } from "@/components/hero-section"
 import { BusResults } from "@/components/bus-results"
 import { SeatSelection } from "@/components/seat-selection"
@@ -32,24 +33,6 @@ interface Bus {
   totalSeats: number
   amenities: string[]
   busType: string
-}
-
-function toMinutes(hhmm: string) {
-  const [hours, minutes] = hhmm.split(":").map(Number)
-  return hours * 60 + minutes
-}
-
-function toTime(totalMinutes: number) {
-  const normalized = ((totalMinutes % 1440) + 1440) % 1440
-  const hours = Math.floor(normalized / 60)
-  const minutes = normalized % 60
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
-}
-
-function toDurationLabel(durationMinutes: number) {
-  const hours = Math.floor(durationMinutes / 60)
-  const minutes = durationMinutes % 60
-  return `${hours}h ${minutes}m`
 }
 
 /** Turn published schedules into the bookable buses shown in search results. */
@@ -76,34 +59,6 @@ function toBuses(schedules: Schedule[]): Bus[] {
 }
 
 type ViewState = "search" | "results" | "seats" | "payment" | "ticket"
-
-/** Local calendar date as YYYY-MM-DD (toISOString would use UTC and roll early). */
-function todayIso() {
-  const now = new Date()
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-")
-}
-
-/** Minutes of notice a passenger needs before a departure to still board it. */
-const BOARDING_CUTOFF_MINUTES = 15
-
-/**
- * Drop departures that have already left, or are about to.
- *
- * Schedules repeat daily, so a 06:00 trip is a valid result for tomorrow but
- * not for this afternoon. Only today is filtered; future dates keep every run.
- */
-function stillBookable(buses: Bus[], travelDate: string) {
-  if (travelDate !== todayIso()) return buses
-
-  const now = new Date()
-  const cutoff = now.getHours() * 60 + now.getMinutes() + BOARDING_CUTOFF_MINUTES
-
-  return buses.filter((bus) => toMinutes(bus.departureTime) > cutoff)
-}
 
 export type HomePageContentProps = {
   autoOpenMyTickets?: boolean
@@ -160,7 +115,8 @@ export function HomePageContent({ autoOpenMyTickets, scrollToSearch }: HomePageC
     ])
 
     const onRoute = toBuses(published.schedules)
-    const bookable = stillBookable(onRoute, date || todayIso())
+    const travelling = date || todayIso()
+    const bookable = onRoute.filter((bus) => !hasDeparted(travelling, bus.departureTime))
 
     // Distinguish "nothing runs here" from "today's buses have all gone".
     setAllDeparted(onRoute.length > 0 && bookable.length === 0)

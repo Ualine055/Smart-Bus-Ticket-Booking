@@ -12,16 +12,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { getCompanies, approveCompany, rejectCompany, type Company } from "@/lib/companies"
 import { getAllBookings, type Booking } from "@/lib/bookings"
 import { countUsers } from "@/lib/auth"
-
-/** Firestore may hand back a Timestamp, a Date, or nothing at all. */
-function toDate(value: unknown): Date | null {
-  if (!value) return null
-  if (value instanceof Date) return value
-  if (typeof value === "object" && "toDate" in value) {
-    return (value as { toDate: () => Date }).toDate()
-  }
-  return null
-}
+import { toDate } from "@/lib/dates"
 
 /** Wrap a CSV field: double any quotes, then quote the whole value. */
 function csvCell(value: unknown) {

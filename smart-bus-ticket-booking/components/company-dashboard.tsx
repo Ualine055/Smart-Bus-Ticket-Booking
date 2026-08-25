@@ -9,31 +9,13 @@ import { useAuth } from "@/contexts/AuthContext"
 import { getAllBookings, type Booking } from "@/lib/bookings"
 import { getCompanyById } from "@/lib/companies"
 import { ScheduleModal } from "@/components/schedule-modal"
+import { todayIso, toDate } from "@/lib/dates"
 import {
   getCompanySchedules,
   getAllSchedules,
   deleteSchedule,
   type Schedule,
 } from "@/lib/schedules"
-
-/** Local calendar date as YYYY-MM-DD (toISOString is UTC and rolls over early). */
-function todayIso() {
-  const now = new Date()
-  return [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-")
-}
-
-function toDate(value: unknown): Date | null {
-  if (!value) return null
-  if (value instanceof Date) return value
-  if (typeof value === "object" && "toDate" in value) {
-    return (value as { toDate: () => Date }).toDate()
-  }
-  return null
-}
 
 export function CompanyDashboard() {
   const { userData } = useAuth()
